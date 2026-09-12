@@ -1,0 +1,14 @@
+class,entity,is_shared,legal_entity,years_active,note
+General,SREI,true,,2019-2025,Not tied to a property. Shared across entities: a General line takes the entity of the bank account it ran through (e.g. capital contributions/distributions on the PLA bank). In 2020-2024 the year-end model reallocated General-class expenses across properties.
+Providence,PLA,false,,2025,PLA business. Rows dated before the PLA bank account opened (2025-06-02) and paid from the SREI bank are the prior sole-proprietor consulting business (needs PLA launch date).
+Rentals:142 Maloney Terrace,SREI,false,,2019-2025,Rental property
+Rentals:176 Tulsk Road,SREI,false,176 Tulsk LLC,2021-2025,Rental property; separate LLC tracked as a class under SREI
+Rentals:544 Liberty Circle,SREI,false,544 Liberty LLC,2021-2025,Rental property; separate LLC tracked as a class under SREI
+Rentals:136 Sunnyside,SREI,false,,2024-2025,"Rental property (""tio's house"" in notes)"
+Rentals:The Clubhouse,SREI,false,,2020-2025,On the 13 Chisel Creek property; rented to consulting business in 2024; 2025 SRC maintenance relationship
+Rentals:The Shed,SREI,false,,2020-2025,On the 13 Chisel Creek property; sports/practice rentals collected via Venmo
+Rentals:533 Mystic Lane,SREI,false,,2022-2024,No 2025 activity - mark inactive
+Flips:1 Mystery Rose,SREI,false,,2020,No activity since 2020 - mark inactive
+Land Development:13 Chisel Creek Dr,SREI,false,,2020-2025,"~115-acre property that also holds the Clubhouse, the Shed and Jose's personal house (""Our House"" - personal, allocated to 3102 Capital Distribution)"
+Land Development:1671-1675 New London Rd,SREI,false,,2023-2025,Land (worksheets also call it 1621-1675)
+Maintenance Business,SREI,false,,2025,New in 2025: Square Roots Collective (SRC) pays SREI for maintenance work; Jose Barreto payroll is the labor side

@@ -1,0 +1,23 @@
+# Local development database. The app itself runs with `pnpm dev` on your Mac.
+# Phase 7 adds the production compose file (app + postgres + caddy).
+services:
+  db:
+    image: postgres:16
+    container_name: sabastro-ledger-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sabastro_ledger
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d sabastro_ledger"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

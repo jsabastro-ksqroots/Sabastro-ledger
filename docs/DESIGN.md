@@ -1,0 +1,199 @@
+# DESIGN.md — Sabastro Ledger data model and core rules
+
+This is the blueprint the code follows. `CLAUDE.md` decides _what_ the app must do; this document decides
+_how the data is shaped_ and _which rules the database itself refuses to break_. Plain-English paragraphs
+first, then the constraints. Anything marked **DB** is enforced inside PostgreSQL (constraint or trigger),
+so it holds even if application code has a bug. Revised 2026-09-12 after an independent review of the
+first draft (28 findings folded in; see `docs/DECISIONS.md` P0-19 onwards).
+
+Conventions: every table has a UUID `id`; money is `BIGINT` cents; transaction dates are `DATE`; audit
+timestamps are `TIMESTAMPTZ`; table and column names are `snake_case`; nothing is hard-deleted (rows get
+`is_active = false`, `voided_at`, `revoked_at` or `superseded_at`). The app connects as a dedicated
+database role (`ledger_app`) that is _not_ the table owner, so the grants described below actually bite.
+
+## 1. Data model
+
+### Identity, sessions, audit
+
+| Table              | Key fields                                                                                                                                                                                                                                                                                                                                                      | Relationships / notes                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`            | `email` (unique, lower-cased), `display_name`, `password_hash` (Argon2id), `role` (`OWNER` · `FULL` · `LIMITED` · `VIEW_ONLY`), `mfa_secret_enc` (TOTP secret, AES-256-GCM under `TOTP_ENCRYPTION_KEY`), `mfa_enrolled_at`, `mfa_last_time_step` (blocks re-use of a code), `is_active`, `failed_login_count`, `lockout_count`, `locked_until`, `last_login_at` | Seeded from env for Jose (Owner) and Jamin (Full). **DB**: exactly one active Owner (partial unique index); the Owner cannot be demoted or deactivated except inside a "Change owner" transaction (trigger).                                                                                                                                                                                                                                                    |
+| `user_permissions` | `user_id`, `permission` (`view_ledger` · `upload_receipts` · `review_confirm` · `edit_posted` · `manage_models` · `run_reports` · `export` · `view_settings` · `manage_users` · `close_year`)                                                                                                                                                                   | The checklist for `LIMITED` users. `OWNER` and `FULL` have every permission implicitly; `VIEW_ONLY` has `view_ledger` + `run_reports`. Owner-only, over and above permissions: remove users, change owner, re-open a closed/filed year, re-apply a model to a filed year (D10). Nobody edits their own role, permissions or active flag; you can only manage users below your own level (details in §6).                                                        |
+| `recovery_codes`   | `user_id`, `code_hash` (Argon2id), `used_at`                                                                                                                                                                                                                                                                                                                    | Ten codes generated at enrollment, shown once, each usable once.                                                                                                                                                                                                                                                                                                                                                                                                |
+| `sessions`         | `token_hash` (SHA-256 of the cookie value; raw token never stored), `user_id`, `mfa_verified_at`, `created_at`, `last_seen_at`, `expires_at`, `ip`, `user_agent`, `revoked_at`, `revoke_reason`                                                                                                                                                                 | A session is "half open" after the password and before the code: it lives **10 minutes** and only the MFA pages accept it. When the code passes, the token is **rotated** (new cookie) and the session gets its full life: idle expiry 12 h, absolute 7 days. "Sign out everywhere" sets `revoked_at` on all of a user's rows.                                                                                                                                  |
+| `login_attempts`   | `email`, `ip`, `succeeded`, `attempted_at`                                                                                                                                                                                                                                                                                                                      | Rate-limit source. Wrong passwords, wrong codes and wrong recovery codes all count: 5 failures per user in 15 min locks the account 15 min (doubling on repeat, max 24 h); 30 failures per IP in 15 min throttles that IP. The lock is checked before any password or code is computed. The IP comes from `X-Forwarded-For` only when `TRUST_PROXY_HEADERS=true` (behind Caddy); otherwise it is recorded as unknown so nobody can spoof or evade the throttle. |
+| `audit_log`        | `id BIGSERIAL`, `at`, `user_id` (null = system), `session_id`, `action` (e.g. `login.success`, `transaction.confirm`, `tax_year.close`, `settings.update`), `subject_type`, `subject_id`, `subject_label`, `entity_id`, `tax_year_id`, `before JSONB`, `after JSONB`, `reason`, `is_lock_override`, `ip`, `user_agent`                                          | **DB**: `ledger_app` has `INSERT` and `SELECT` only; a trigger raises on `UPDATE`, `DELETE` and `TRUNCATE` regardless of role (a database superuser could drop the trigger — that is what the nightly backups are for). Secrets are scrubbed before the JSON is written.                                                                                                                                                                                        |
+
+### Organisation and chart
+
+| Table                 | Key fields                                                                                                                                                                                                         | Relationships / notes                                                                                                                                                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entities`            | `code` (`SREI`, `PLA`), `name`, `legal_name`, `tax_form` (`1065` · `SCHEDULE_C` · `1120S`), `is_active`                                                                                                            | Everything hangs off an entity. 544 Liberty and 176 Tulsk are _classes_ with `is_legal_entity = true`, not entities.                                                                                                                                                |
+| `accounts`            | `number` (4-digit text, unique), `name`, `parent_group`, `type` (`ASSET` · `LIABILITY` · `EQUITY` · `INCOME` · `EXPENSE`), `sub_type`, `sub_type_2`, `is_active`, `source`, `note`                                 | Seeded from `seed/chart_of_accounts.csv`; shared by all entities. **DB**: `number` unique and four digits; lines reference accounts with `ON DELETE RESTRICT`, so an account with postings can only be deactivated.                                                 |
+| `bank_accounts`       | `entity_id`, `account_id` (the ledger account, e.g. `1101`; unique), `name` ("Real Estate"), `institution`, `kind` (`CHECKING` · `SAVINGS` · `CASH_APP`), `last4`, `opened_on`, `closed_on`, `is_active`           | Ties a Bank-type account to the entity whose money it is; decides the _home entity_ of a bank-centric transaction. **DB**: the ledger account must have sub-type `Bank` (trigger).                                                                                  |
+| `classes`             | `name` (unique), `entity_id`, `is_shared` (true only for `General`), `is_legal_entity`, `legal_entity_name`, `kind` (`GENERAL` · `RENTAL` · `LAND` · `FLIP` · `BUSINESS`), `years_note`, `sort_order`, `is_active` | Seeded from `seed/classes.csv`. Promoting a class to its own entity later = insert an entity, re-point `entity_id`, keep every line (historical lines keep the entity they were attributed to at the time). **DB**: lines reference classes with `RESTRICT`.        |
+| `entity_bridge_rules` | `payer_entity_id`, `receiver_entity_id`, `mode` (`DISTRIBUTION_CONTRIBUTION` default · `INTERCOMPANY`), `payer_account_id` (default `3102`), `receiver_account_id` (default `3101`)                                | The configurable cross-entity rule (§3). Unique per ordered pair; payer ≠ receiver.                                                                                                                                                                                 |
+| `tax_years`           | `entity_id`, `year`, `state` (`OPEN` · `CLOSED` · `FILED`), `closed_at/by`, `filed_at/by`, `override_count`, `note`                                                                                                | Unique per `(entity_id, year)`. **DB**: state only moves forward unless the transaction carries an override reason (§4).                                                                                                                                            |
+| `tax_year_checklist`  | `tax_year_id`, `item_key`, `done_at/by`, `override_reason`                                                                                                                                                         | The year-end gate items.                                                                                                                                                                                                                                            |
+| `tax_year_documents`  | `tax_year_id`, `kind` (`RETURN` · `SUPPORT` · `EXPORT`), `file_key`, `sha256`, `label`, `uploaded_by/at`                                                                                                           | Filed returns, supporting PDFs, every generated export (kept forever).                                                                                                                                                                                              |
+| `settings`            | `scope` (`GLOBAL` or an entity id), `key`, `value JSONB`, `updated_by/at`                                                                                                                                          | AI model + spend cap, receipt-required vendor types, transfer patterns, PLA launch date, number format, IP allow-list (Owner-editable only; must always include the address making the change; `IP_ALLOWLIST_DISABLED=true` in the environment is the break-glass). |
+
+### Ledger (Phase 1)
+
+| Table               | Key fields                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Relationships / notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `transactions`      | `entity_id` (home entity: the bank account's entity, or the entity chosen for a manual journal), `date`, `vendor`, `memo`, `status` (`DRAFT` · `FLAGGED` · `POSTED` · `VOIDED`), `kind` (`BANK` · `JOURNAL` · `ADJUSTING`), `bank_account_id` (informational: the originating account; a transfer touches two bank lines), `source` (`IMPORT` · `RECEIPT` · `STATEMENT` · `MANUAL`), `source_file`, `source_ref`, `source_ref_2`, `filled_in_by`, `verified_by_owner`, `classification_source` (`IMPORT` · `VENDOR_HISTORY` · `AI` · `HUMAN`), `ai_confidence`, `flags JSONB`, `needs_model_split`, `receipt_expected_count`, `posted_at/by`, `voided_at/by`, `void_reason`, `created_by/at`, `updated_by/at` | **DB**: unique `(source_file, source_ref)` where not null (import idempotency); `void_reason` required when `VOIDED`; `posted_at/by` required when `POSTED`; `ledger_app` has no `DELETE` grant.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `transaction_lines` | `transaction_id`, `line_no`, `account_id` (nullable until posted), `class_id` (nullable until posted), `entity_id` (the entity this line is _attributed_ to, §3), `debit_cents`, `credit_cents`, `memo`, `name`, `is_bridge`, `parent_line_id`, `allocation_model_version_id`, `allocation_target_id`, `superseded_at`, `superseded_by_audit_id`, `source_row`                                                                                                                                                                                                                                                                                                                                                | A line with `superseded_at IS NULL` is **live**. Splits, unsplits, model re-application and bridge regeneration never delete lines of a posted transaction: they supersede the old ones and insert new ones, so history is always reconstructible. **DB**: `debit_cents >= 0`, `credit_cents >= 0`, exactly one non-zero; per transaction and _per entity within it_, Σ debit = Σ credit over live lines (deferred constraint trigger); ≥ 2 live lines unless `VOIDED`; every live line of a `POSTED` transaction has non-null account, class and entity; `DELETE` allowed only while the parent is `DRAFT`/`FLAGGED`; a split child's parent must be a superseded line of the same transaction, and the children of one parent must sum to the parent's amount on the same side. |
+| `notes`             | `transaction_id` (or `receipt_id`), `kind` (`SYSTEM` · `USER`), `body`, `created_by/at`, `updated_at`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | System notes are append-only (**DB** trigger); user notes are editable with an audit row. Full-text index on `body`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+### Receipts and statements (Phases 3–4)
+
+| Table             | Key fields                                                                                                                                                                                                                                                                                      | Relationships / notes                                                                                                                                                                                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `receipts`        | `file_key`, `original_filename`, `mime`, `size_bytes`, `sha256` (unique), `thumbnail_key`, `uploaded_by/at`, `receipt_date`, `vendor_extracted`, `total_cents_extracted`, `extraction JSONB`, `ai_usage_id`, `status` (`PENDING_STATEMENT` · `MATCHED` · `FLAGGED` · `ARCHIVED`), `flag_reason` | Identical uploads are detected by `sha256` and linked, never stored twice. A receipt-born draft knows its expense side but may not know its bank account yet — that is what nullable `account_id`/`class_id` on lines and the review queue are for.                                 |
+| `receipt_links`   | `receipt_id`, `transaction_id`, `linked_by/at`, `note`                                                                                                                                                                                                                                          | Many-to-many; composite primary key.                                                                                                                                                                                                                                                |
+| `statements`      | `bank_account_id`, `period_start`, `period_end`, `opening_cents`, `closing_cents`, `file_key`, `sha256`, `parsed_with` (`TEXT_LAYER` · `VISION`), `line_count`, `tie_out_ok`, `superseded_by_id`, `imported_by/at`, `reconciled_at/by`                                                          | A statement whose lines do not tie is **rejected for bookkeeping** (it can never spawn drafts) but kept for diagnosis so the user can re-parse or re-upload. **DB**: unique `(bank_account_id, period_start, period_end)` and unique `sha256` apply only `WHERE tie_out_ok = true`. |
+| `statement_lines` | `statement_id`, `line_no`, `date`, `description`, `normalized_description`, `amount_cents` (signed), `running_balance_cents`, `section`, `duplicate_of_id`, `match_status` (`UNMATCHED` · `MATCHED` · `DUPLICATE_SUSPECT` · `TRANSFER`), `transaction_id` (nullable)                            | The link lives on the statement side so **several lines can point at one transaction** (a transfer 1101 → 1103 appears on both statements). Voiding a transaction clears the link (audited) so the line can be re-drafted. Duplicate suspects are flagged, never dropped.           |
+
+### Allocation models (Phase 5)
+
+| Table                       | Key fields                                                                                                                                                                                                                      | Relationships / notes                                                                                                                                                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `allocation_models`         | `entity_id`, `tax_year_id`, `name`, `description`, `is_reference` (archived 2020–2024 worksheet models), `is_active`, `current_version_id`, `applied_version_id`, `applied_at/by`, `created_by/at`                              | A model belongs to exactly one tax year. "Applied" state lives here because versions are immutable.                                                                                                                                                          |
+| `allocation_model_versions` | `model_id`, `version_no`, `basis` (`PERCENT` · `VALUE` · `ACRES` · `MONTHS` · `COUNT`), `secondary_basis` (optional, e.g. months in service on top of value), `note`, `diff JSONB`, `created_by/at`, `reverted_from_version_id` | One basis per version, so shares are always comparable. Immutable once written (**DB** trigger blocks `UPDATE`/`DELETE`). Unique `(model_id, version_no)`.                                                                                                   |
+| `allocation_targets`        | `version_id`, `class_id` (null when `is_personal`), `is_personal`, `weight NUMERIC(18,6)`, `weight_2 NUMERIC(18,6)` (secondary basis), `share_bp` (computed share in basis points), `is_remainder_target`, `sort_order`         | **DB**: per version Σ `share_bp` = 10,000 and exactly one `is_remainder_target` (deferred trigger). Personal target posts to `3102`, class `General`. Cents are split by floor with the remainder to the designated target, so the parts always sum exactly. |
+| `allocation_rules`          | `version_id`, `account_ids UUID[]`, `class_id`, `vendor_pattern`, `note`                                                                                                                                                        | Rules create _proposals_ only.                                                                                                                                                                                                                               |
+| `allocation_applications`   | `version_id`, `applied_at/by`, `transactions_resplit`, `cents_moved`, `preview JSONB`                                                                                                                                           | The log of every "apply / re-apply", with the preview the user confirmed.                                                                                                                                                                                    |
+
+### AI and vendor memory (Phase 3)
+
+| Table            | Key fields                                                                                                                                                                                                       | Relationships / notes                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `ai_usage`       | `at`, `user_id`, `purpose` (`RECEIPT_EXTRACT` · `STATEMENT_VISION` · `CLASSIFY`), `model`, `input_tokens`, `cached_input_tokens`, `output_tokens`, `cost_millicents`, `duration_ms`, `ok`, `error`, `receipt_id` | Monthly totals and the spend cap live on this table.                     |
+| `vendor_aliases` | `alias` (normalized, unique), `vendor_name` (canonical), `created_by/at`                                                                                                                                         | "LOWES #02405" → "Lowes". User-editable.                                 |
+| `vendor_memory`  | `vendor_name`, `account_id`, `class_id`, `count`, `owner_verified_count`, `last_used_on`                                                                                                                         | Materialised from **live, posted** lines; refreshed after every confirm. |
+
+## 2. Transaction lifecycle
+
+A transaction is born as a `DRAFT` from a receipt, a statement line, or a manual entry. The AI or vendor
+memory fills in vendor, account and class and writes its reasoning into a system note; a draft whose
+account or class is still unknown simply shows "needs classification" in the queue. If anything is
+doubtful (confidence below 0.7, suspected duplicate, receipt with no bank line, amount mismatch, a
+"capitalize vs expense" question) the draft becomes `FLAGGED` with the reason in `flags`. Both states sit
+in the review queue. Confirming a draft makes it `POSTED`: from then on it is part of the books, appears
+in reports, and every later change is recorded with before/after in the audit log. A posted transaction
+that turns out to be wrong is `VOIDED` with a typed reason; its lines stay exactly as they were. Reports
+read only `POSTED` rows and only live lines unless the user flips the "include drafts" preview toggle.
+
+**DB**: `status` is a checked enum; `VOIDED` requires `void_reason`; `POSTED` requires `posted_at/by` and
+complete lines (account, class, entity on every live line); the balance trigger runs on every write of
+lines whatever the status, so even drafts always balance on amounts; lines under a `POSTED` parent are
+never deleted, only superseded; the app role cannot delete transactions at all. Status transitions
+(`DRAFT ↔ FLAGGED → POSTED → VOIDED`) are enforced in the application layer and each writes an audit row.
+
+## 3. Entity attribution and the cross-entity bridge
+
+Every line carries the entity it belongs to, decided in this order: (1) a line on a **bank account's
+ledger account** always belongs to that bank account's entity, whatever class it carries — and it carries
+the same class as the row it paid for, exactly as the 2019–2024 books do (the per-class "Bank" column in
+the reconciliation table depends on it); (2) any other line belongs to the entity of its class
+(`Providence` → PLA, `Rentals:*` → SREI); (3) a `General` line, the one shared class, belongs to the
+transaction's home entity (the bank account's entity, or the entity chosen for a manual journal).
+Reports for an entity simply select live lines with that `entity_id`.
+
+Whenever the lines of one transaction leave an entity unbalanced, the app inserts **bridge lines**. The
+rule is general: after the ordinary lines are set, compute for each entity its net (Σ debit − Σ credit of
+its non-bridge live lines, per receiving class). An entity with a negative net is the **payer** and gets
+`Dr 3102 Capital Distribution` (class `General`) for the shortfall; an entity with a positive net is the
+**receiver** and gets `Cr 3101 Capital Contribution` (class: the class whose lines it received) for the
+excess — the money moved through Jose, who owns both. Money out (SREI bank pays a `Providence` expense:
+SREI net −100, PLA net +100 → SREI `Dr 3102` 100, PLA `Cr 3101` 100) and money in (a PLA client pays
+into `1101`: SREI `Dr 1101`, PLA `Cr 4xxx` → PLA is the payer, SREI the receiver) both fall out of the
+same arithmetic, as do splits (only the foreign share is bridged) and manual or adjusting journals that
+span entities. Bridge lines are marked `is_bridge`; when the class, bank account or amounts change, the
+old pair is superseded and a fresh pair inserted. Settings hold one rule per ordered entity pair; the
+default is distribution/contribution, the alternative an intercompany "due to / due from" pair.
+
+**DB**: the deferred balance trigger checks Σ debit = Σ credit **for each `entity_id` present among the
+live lines**, which implies the whole transaction balances too. A transaction that would leave one
+entity unbalanced cannot be committed, bridge or no bridge. Bridge lines obey the same constraints; the
+app refuses to edit them directly.
+
+## 4. Tax-year lock rule
+
+Each entity has one `tax_years` row per calendar year. `OPEN` is normal editing. `CLOSED` means the
+numbers have been handed to the return: any edit, void, new posting, model change, or split dated in
+that year first shows a full-screen warning, requires a typed reason, and is written to the audit log as
+an override; reports then wear a "closed — overridden N times" badge. `FILED` is the same, with the
+filed return and supporting documents attached and the warning escalated to "This year has been FILED."
+Closing is gated by the year-end checklist (every item done or overridden with a reason). Owner and Full
+access can close or file a year (Limited users only with the `close_year` box ticked). Only the Owner
+can **re-open** a closed or filed year — itself an audited override that keeps the attached documents and
+the override count, and re-closing runs the checklist again — and only the Owner can re-apply an
+allocation model to a filed year (D10). 2019–2024 import as `FILED`, 2025 as `OPEN`, 2026 is created
+`OPEN` on first use.
+
+**DB**: a trigger on `transactions` (insert/update), `transaction_lines` (insert/update/delete, joining
+the parent for the date) and the model-application tables evaluates `tax_years.state` for **every
+distinct `(line entity, year of date)` in the transaction** — both entities of a bridged transaction, and
+both the old and the new date when a date changes. A write is rejected if any of those years is `CLOSED`
+or `FILED` unless the same database transaction has run
+`SELECT set_config('app.lock_override_reason', '<text>', true)`, which the app does only after the user
+typed a reason; the same code path inserts one audit row with `is_lock_override = true` and bumps
+`override_count` on each affected year. The check is skipped while a transaction stays `DRAFT`/`FLAGGED`
+before and after the write (drafts never appear in reports); it fires on the move to `POSTED`/`VOIDED`
+and on any write that touches a `POSTED` row. A year with no `tax_years` row counts as `OPEN` and the row
+is created on demand. `state` moves only forward (`OPEN → CLOSED → FILED`); the Owner re-open uses the
+same override setting.
+
+## 5. Allocation-model versioning
+
+A model is one entity's recipe for splitting shared costs in one tax year: a list of targets (property
+classes plus the special Personal target) with weights on one basis (manual %, value, acres, months, or
+counts, optionally times a secondary basis such as months in service), from which the app computes
+percentages that must total 100.00 %, with any rounding remainder assigned to a designated target.
+Applying a model to a transaction supersedes the original line and inserts one child line per target,
+each stamped with the model _version_ that produced it. Saving a change to a model always creates a new
+version (with a diff and a note) and, after a preview and confirmation, re-splits every transaction in
+that tax year linked to the model — drafts and posted alike — by superseding the old children and
+inserting new ones, so the whole year is consistent with one recipe. Manual splits carry no version id
+and are never touched. Unsplit supersedes the children and brings back a single line. Any version can be
+reverted to, which is itself a new version. Models never reach outside their tax year; "copy to next
+year" clones the recipe as a fresh model. Every application is logged with the preview the user saw.
+
+**DB**: versions and targets are immutable after insert; Σ `share_bp` = 10,000 with exactly one
+remainder target per version; `allocation_models.tax_year_id` is fixed and a trigger rejects linking a
+line whose transaction date falls outside that year; a split child's `parent_line_id` must belong to the
+same transaction; re-application on a `CLOSED`/`FILED` year goes through the §4 override path.
+
+## 6. Roles, sessions and the audit trail in one breath
+
+Passwords are Argon2id. Every user must enrol a TOTP authenticator on first login and gets ten one-time
+recovery codes. The session cookie is `HttpOnly; Secure; SameSite=Lax`, stores only a random token whose
+hash is in `sessions`, is rotated when the authenticator code passes, idles out after 12 hours, and can
+be revoked everywhere with one click. Every server action, route handler and page load first resolves
+the session, then checks the permission it needs — the UI hides what you cannot do, but the server is
+the gate. User management follows a strict ladder: nobody edits their own role, permissions, active flag
+or MFA through the admin screens; you may only create, edit, deactivate or reset users **below** your own
+level (a Limited user with "Manage users" may also manage other Limited users, but can only hand out
+permissions they hold themselves); only the Owner creates or edits Full-access users; the Owner's own
+account changes only through "Change owner", which demotes and promotes in one database transaction.
+Every login (success or failure), confirm, edit, void, split, model change, year-state change, export,
+settings change and user change lands in `audit_log`, which the application role can only append to.
+
+## 7. Questions for Jamin (answer whenever convenient; defaults are in force meanwhile)
+
+1. **PLA launch date.** The books show `Providence`-class spending on the SREI bank from 2025-01-15,
+   21 rows before the PLA account opened on 2025-06-02. What date does Jose consider PLA's launch for
+   the sole-proprietor report? (Default in force: 2025-06-02, marked placeholder.)
+2. **PLA's tax form.** Schedule C on Jose's 1040, or an S-corp 1120-S? And is SREI still a 1065
+   partnership for 2025? (Default: Schedule C for PLA, 1065 for SREI.)
+3. **The "live app / shared ledger"** that produced the 2025 snapshot: does it still exist, can it
+   export its data, and does it hold the 129 receipt files the snapshot references? (Default: treat the
+   snapshot workbook as the source of truth.)
+4. **Seed confirmations.** Is `1104 Venmo` the right number and name? Are the inferred parents/types
+   for `1313`, `1315`, `4103`, `5226`, `5227` right? `1501 Tenant Rent Due` is now seeded as an Asset
+   under Accounts Receivable (the source workbook had it labelled as a liability sub-type) — agreed?
+5. **Sign-in details and the repository.** Which email addresses should Jose and Jamin use to log in
+   (Jamin's is assumed to be jamin@providencelegacyadvisors.com), and should the private GitHub
+   repository be created under the account whose key is on this Mac (`jsabastro-ksqroots`)?

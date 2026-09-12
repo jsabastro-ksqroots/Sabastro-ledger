@@ -1,0 +1,47 @@
+# --- secrets: never commit ---
+.env
+.env.*
+!.env.example
+
+# --- raw source workbooks (private; see DATA_SOURCES.md) ---
+data/source/
+sabastro-ledger-kickoff.zip
+
+# --- dependencies / build ---
+node_modules/
+.pnpm-store/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- local databases and uploads ---
+.pg/
+.postgres/
+pgdata/
+uploads/
+*.sqlite
+
+# --- test artifacts ---
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# --- generated prisma client ---
+src/generated/

@@ -1,0 +1,316 @@
+// Sabastro Ledger — Phase 0 schema: identity, sessions, audit log, organisation, chart, classes, tax years.
+// Ledger tables (transactions, lines, receipts, statements, allocation models) arrive in later phases.
+// See docs/DESIGN.md for the plain-English description and the database-level rules.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity, sessions, audit
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  OWNER
+  FULL
+  LIMITED
+  VIEW_ONLY
+}
+
+enum Permission {
+  VIEW_LEDGER
+  UPLOAD_RECEIPTS
+  REVIEW_CONFIRM
+  EDIT_POSTED
+  MANAGE_MODELS
+  RUN_REPORTS
+  EXPORT
+  VIEW_SETTINGS
+  MANAGE_USERS
+  CLOSE_YEAR
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  displayName      String    @map("display_name")
+  passwordHash     String    @map("password_hash")
+  role             UserRole
+  mfaSecretEnc     String?   @map("mfa_secret_enc")
+  mfaEnrolledAt    DateTime? @map("mfa_enrolled_at") @db.Timestamptz(6)
+  mfaLastTimeStep  Int?      @map("mfa_last_time_step")
+  isActive         Boolean   @default(true) @map("is_active")
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockoutCount     Int       @default(0) @map("lockout_count")
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  permissions   UserPermission[]
+  recoveryCodes RecoveryCode[]
+  sessions      Session[]
+  auditEntries  AuditLog[]
+
+  @@map("users")
+}
+
+model UserPermission {
+  userId     String     @map("user_id") @db.Uuid
+  permission Permission
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permission])
+  @@map("user_permissions")
+}
+
+model RecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recovery_codes")
+}
+
+model Session {
+  id            String    @id @default(uuid()) @db.Uuid
+  tokenHash     String    @unique @map("token_hash")
+  userId        String    @map("user_id") @db.Uuid
+  mfaVerifiedAt DateTime? @map("mfa_verified_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt    DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  ip            String?
+  userAgent     String?   @map("user_agent")
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokeReason  String?   @map("revoke_reason")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model LoginAttempt {
+  id          BigInt   @id @default(autoincrement())
+  email       String
+  ip          String
+  succeeded   Boolean
+  attemptedAt DateTime @default(now()) @map("attempted_at") @db.Timestamptz(6)
+
+  @@index([email, attemptedAt])
+  @@index([ip, attemptedAt])
+  @@map("login_attempts")
+}
+
+/// Append-only. The app role can only INSERT and SELECT; a trigger blocks UPDATE/DELETE for everyone.
+model AuditLog {
+  id             BigInt   @id @default(autoincrement())
+  at             DateTime @default(now()) @db.Timestamptz(6)
+  userId         String?  @map("user_id") @db.Uuid
+  sessionId      String?  @map("session_id") @db.Uuid
+  action         String
+  subjectType    String?  @map("subject_type")
+  subjectId      String?  @map("subject_id")
+  subjectLabel   String?  @map("subject_label")
+  entityId       String?  @map("entity_id") @db.Uuid
+  taxYearId      String?  @map("tax_year_id") @db.Uuid
+  before         Json?
+  after          Json?
+  reason         String?
+  isLockOverride Boolean  @default(false) @map("is_lock_override")
+  ip             String?
+  userAgent      String?  @map("user_agent")
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([at])
+  @@index([userId, at])
+  @@index([action, at])
+  @@index([entityId, at])
+  @@map("audit_log")
+}
+
+// ---------------------------------------------------------------------------
+// Organisation and chart
+// ---------------------------------------------------------------------------
+
+enum TaxForm {
+  FORM_1065
+  SCHEDULE_C
+  FORM_1120S
+}
+
+model Entity {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  legalName String?  @map("legal_name")
+  taxForm   TaxForm  @map("tax_form")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bankAccounts  BankAccount[]
+  classes       Class[]
+  taxYears      TaxYear[]
+  bridgeAsPayer EntityBridgeRule[] @relation("bridge_payer")
+  bridgeAsRecv  EntityBridgeRule[] @relation("bridge_receiver")
+
+  @@map("entities")
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+model Account {
+  id          String      @id @default(uuid()) @db.Uuid
+  number      String      @unique
+  name        String
+  parentGroup String      @map("parent_group")
+  type        AccountType
+  subType     String      @map("sub_type")
+  subType2    String      @map("sub_type_2")
+  isActive    Boolean     @default(true) @map("is_active")
+  source      String?
+  note        String?
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  bankAccount     BankAccount?
+  bridgeAsPayer   EntityBridgeRule[] @relation("bridge_payer_account")
+  bridgeAsRecv    EntityBridgeRule[] @relation("bridge_receiver_account")
+
+  @@map("accounts")
+}
+
+enum BankAccountKind {
+  CHECKING
+  SAVINGS
+  CASH_APP
+}
+
+model BankAccount {
+  id          String          @id @default(uuid()) @db.Uuid
+  entityId    String          @map("entity_id") @db.Uuid
+  accountId   String          @unique @map("account_id") @db.Uuid
+  name        String
+  institution String?
+  kind        BankAccountKind @default(CHECKING)
+  last4       String?
+  openedOn    DateTime?       @map("opened_on") @db.Date
+  closedOn    DateTime?       @map("closed_on") @db.Date
+  isActive    Boolean         @default(true) @map("is_active")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entity  Entity  @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([entityId])
+  @@map("bank_accounts")
+}
+
+enum ClassKind {
+  GENERAL
+  RENTAL
+  LAND
+  FLIP
+  BUSINESS
+}
+
+model Class {
+  id              String    @id @default(uuid()) @db.Uuid
+  name            String    @unique
+  entityId        String    @map("entity_id") @db.Uuid
+  isShared        Boolean   @default(false) @map("is_shared")
+  isLegalEntity   Boolean   @default(false) @map("is_legal_entity")
+  legalEntityName String?   @map("legal_entity_name")
+  kind            ClassKind
+  yearsNote       String?   @map("years_note")
+  note            String?
+  sortOrder       Int       @default(0) @map("sort_order")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+
+  @@index([entityId])
+  @@map("classes")
+}
+
+enum BridgeMode {
+  DISTRIBUTION_CONTRIBUTION
+  INTERCOMPANY
+}
+
+/// How a payment by one entity's bank for another entity's class is bridged so each entity balances.
+model EntityBridgeRule {
+  id                String     @id @default(uuid()) @db.Uuid
+  payerEntityId     String     @map("payer_entity_id") @db.Uuid
+  receiverEntityId  String     @map("receiver_entity_id") @db.Uuid
+  mode              BridgeMode @default(DISTRIBUTION_CONTRIBUTION)
+  payerAccountId    String     @map("payer_account_id") @db.Uuid
+  receiverAccountId String     @map("receiver_account_id") @db.Uuid
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payerEntity     Entity  @relation("bridge_payer", fields: [payerEntityId], references: [id], onDelete: Restrict)
+  receiverEntity  Entity  @relation("bridge_receiver", fields: [receiverEntityId], references: [id], onDelete: Restrict)
+  payerAccount    Account @relation("bridge_payer_account", fields: [payerAccountId], references: [id], onDelete: Restrict)
+  receiverAccount Account @relation("bridge_receiver_account", fields: [receiverAccountId], references: [id], onDelete: Restrict)
+
+  @@unique([payerEntityId, receiverEntityId])
+  @@map("entity_bridge_rules")
+}
+
+enum TaxYearState {
+  OPEN
+  CLOSED
+  FILED
+}
+
+model TaxYear {
+  id            String       @id @default(uuid()) @db.Uuid
+  entityId      String       @map("entity_id") @db.Uuid
+  year          Int
+  state         TaxYearState @default(OPEN)
+  closedAt      DateTime?    @map("closed_at") @db.Timestamptz(6)
+  closedById    String?      @map("closed_by_id") @db.Uuid
+  filedAt       DateTime?    @map("filed_at") @db.Timestamptz(6)
+  filedById     String?      @map("filed_by_id") @db.Uuid
+  overrideCount Int          @default(0) @map("override_count")
+  note          String?
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+
+  @@unique([entityId, year])
+  @@map("tax_years")
+}
+
+/// Key/value settings. scope = "GLOBAL" or an entity id.
+model Setting {
+  id          String   @id @default(uuid()) @db.Uuid
+  scope       String   @default("GLOBAL")
+  key         String
+  value       Json
+  updatedById String?  @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([scope, key])
+  @@map("settings")
+}

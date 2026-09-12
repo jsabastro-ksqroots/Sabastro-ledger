@@ -1,0 +1,9 @@
+# pnpm settings live here (pnpm 10+ no longer reads them from package.json or .npmrc).
+savePrefix: ""
+engineStrict: true
+allowBuilds:
+  "@embedded-postgres/darwin-arm64": true
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
+  unrs-resolver: true

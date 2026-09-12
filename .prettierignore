@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+src/generated
+pnpm-lock.yaml
+playwright-report
+test-results
+data/source
+*.xlsx
