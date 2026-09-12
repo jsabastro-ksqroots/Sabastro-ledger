@@ -54,9 +54,11 @@ Next session: **Phase 1 — core ledger.** Paste the Phase 1 prompt from `KICKOF
 - **Checks (all green on 2026-09-12):** `pnpm typecheck`, `pnpm lint`, `pnpm test` = 10 files / 66
   tests (money helpers, auth flows, lockout, MFA, sessions, permissions, audit immutability, owner
   protection, tax-year rule, seed idempotency, user rules, activity queries, entities, accounts,
-  classes), `pnpm build` (20 routes), Playwright smoke test `tests/e2e/smoke.spec.ts` (see the line in
-  the commit message for its result), and a manual browser walk-through of sign-in → enrol → dashboard
-  → switchers → every Settings tab.
+  classes), `pnpm build` (20 routes), the Playwright smoke test `tests/e2e/smoke.spec.ts` (sign in →
+  enrol → recovery codes shown → dashboard → Settings → sign out → sign in with a fresh code, wrong code
+  rejected → sign in with a recovery code), and a manual browser walk-through of sign-in → enrol →
+  dashboard → switchers → every Settings tab. The smoke test caught one real bug before commit: the
+  enrollment page redirected to the dashboard before the recovery codes were shown; fixed.
 
 ## How to try it
 
@@ -79,6 +81,7 @@ Anywhere else: follow `docs/HOW_TO_RUN.md`.
 
   (the remote is already configured). If the repo should live under a different account, run
   `git remote set-url origin git@github.com:<account>/sabastro-ledger.git` first.
+
 - **Docker Desktop** is not installed on this Mac (needs an admin password); the embedded Postgres
   fallback is used instead. `docs/HOW_TO_RUN.md` section 1 explains the normal install.
 - The project folder sits inside Google Drive; moving it to `~/Projects/sabastro-ledger` is recommended.

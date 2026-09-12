@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export function EnrollForm() {
+export function EnrollForm({ alreadyEnrolled }: { alreadyEnrolled: boolean }) {
   const [state, action, pending] = useActionState<EnrollState, FormData>(
     confirmEnrollmentAction,
     {},
   );
+
   if (state.recoveryCodes) {
     return (
       <div className="space-y-4">
@@ -36,6 +37,24 @@ export function EnrollForm() {
       </div>
     );
   }
+
+  if (alreadyEnrolled) {
+    return (
+      <div className="space-y-4">
+        <Alert>
+          <AlertTitle>All set.</AlertTitle>
+          <AlertDescription>
+            Your recovery codes were shown once when you enrolled. If you did not save them,
+            generate a new set from Settings → Users → “Generate new recovery codes”.
+          </AlertDescription>
+        </Alert>
+        <Button asChild className="w-full">
+          <Link href="/dashboard">Continue to the dashboard</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <form action={action} className="space-y-3">
       <div className="space-y-2">

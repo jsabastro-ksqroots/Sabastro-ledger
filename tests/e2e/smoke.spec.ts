@@ -44,8 +44,10 @@ test("sign in, enrol an authenticator, reach the dashboard, sign out", async ({ 
   expect(key.length).toBeGreaterThan(10);
   await page.getByLabel("6-digit code from the app").fill(generateSync({ secret: key }));
   await page.getByRole("button", { name: "Finish setup" }).click();
-  await expect(page.getByText("Save these recovery codes")).toBeVisible();
+  // The action hashes ten recovery codes; give the dev server time on a first compile.
+  await expect(page.getByText("Save these recovery codes")).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("ul li.select-all")).toHaveCount(10);
+  const recoveryCodes = await page.locator("ul li.select-all").allTextContents();
   await page.getByRole("link", { name: /continue/i }).click();
 
   await expect(page).toHaveURL(/\/dashboard/);
@@ -55,8 +57,34 @@ test("sign in, enrol an authenticator, reach the dashboard, sign out", async ({ 
   await expect(page).toHaveURL(/\/settings\/users/);
 
   await page.getByRole("button", { name: /Smoke Tester/ }).click();
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/login/);
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login/);
+
+  // Second sign-in: password, then a fresh authenticator code (next time step, so it is not a replay).
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/mfa\/verify/);
+  await page.getByLabel("6-digit code").fill("000000");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText(/not right/)).toBeVisible({ timeout: 15_000 });
+  const nextStep = Math.floor(Date.now() / 1000) + 30;
+  await page.getByLabel("6-digit code").fill(generateSync({ secret: key, epoch: nextStep }));
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+
+  // Third sign-in with a recovery code, which only works once.
+  await page.getByRole("button", { name: /Smoke Tester/ }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page).toHaveURL(/\/login/);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/mfa\/verify/);
+  await page.getByRole("button", { name: /recovery code/i }).click();
+  await page.getByLabel("Recovery code").fill(recoveryCodes[0] as string);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 });
