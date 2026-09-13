@@ -76,7 +76,8 @@ Then, every time you want to use the app:
 pnpm dev
 ```
 
-Open <http://localhost:3000> in your browser. To stop, go back to Terminal and press Ctrl-C.
+Open <http://localhost:3005> in your browser (the app deliberately uses port 3005: on this Mac another
+program of yours already answers on 3000). To stop, go back to Terminal and press Ctrl-C.
 The database keeps running in Docker; `pnpm db:down` stops it (your data stays).
 
 ## 5. First sign-in
@@ -106,7 +107,8 @@ and then, each time:
 pnpm dev:nodocker
 ```
 
-The data lives in the `.pg` folder inside the project (ignored by git). Everything else is identical.
+The data lives in the `.pg` folder inside the project (ignored by git). Everything else is identical: the
+app is at <http://localhost:3005>. If a database from an earlier start is still running, it is reused.
 
 ## 7. Running the tests
 
@@ -188,7 +190,9 @@ Users, the chart, classes, tax years, hand-entered rows and the audit log are ke
 
 - **"command not found: pnpm"** — run `corepack enable` (section 1) and open a new Terminal window.
 - **"Timed out waiting for the database"** — Docker Desktop is not running; open it and retry.
-- **Port 3000 already in use** — another copy is running; press Ctrl-C in that window, or run `pnpm exec next dev -p 3001` and use <http://localhost:3001>. (On the Phase 0/1 Mac an unrelated program holds the IPv4 side of port 3000; the app still answers at <http://[::1]:3000>.)
+- **The address opens a different website** — the ledger runs on <http://localhost:3005>, not 3000. On this
+  Mac a Python program (`server.py`, the earlier V1 ledger) has held port 3000 for weeks, so anything on
+  3000 shows that program. If 3005 is busy too, the Terminal prints the port Next chose instead; use that.
 - **"Cannot read properties of undefined (reading 'findMany')" after an update** — the running app still has the old database client in memory. Press Ctrl-C and start it again (`pnpm dev` or `pnpm dev:nodocker`), which also applies any new migration.
 - **"The import stopped … does not tie"** — nothing was written. The report in Settings → Data (or the Terminal output) names the number that differs; the usual cause is an account or class missing from Settings. Fix it and run the import again.
 - **Locked out after wrong passwords/codes** — wait 15 minutes, or ask the Owner to unlock you in Settings → Users.

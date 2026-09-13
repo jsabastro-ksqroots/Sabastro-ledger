@@ -56,8 +56,10 @@ Next session: **Phase 3 — receipts, AI classifier, review queue.** Paste the P
 
 ## How to try it
 
-On this Mac (no Docker): `pnpm dev:nodocker`, then open <http://[::1]:3000> (127.0.0.1:3000 belongs to an
-unrelated program; if the app picked another port it says so in the Terminal). Logins are in `.env`.
+On this Mac (no Docker): `pnpm dev:nodocker`, then open <http://localhost:3005>. The app uses port 3005
+because Jamin's own V1 (`python server.py`) has held port 3000 on this Mac for weeks; if 3005 is busy the
+Terminal prints the port Next picked instead. A database or app left running from an earlier start is
+reused. Logins are in `.env`.
 The dev database already holds the import (run twice on 2026-09-13), so you do not need to run it again.
 
 What to click, in order:
