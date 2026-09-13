@@ -29,7 +29,7 @@ Before starting, read the "Notes for Phase 2" section at the bottom of this file
     `ledger_app` cannot delete transactions or notes.
 - **Accounting core** (`src/lib/ledger/`): attribution, the general cross-entity bridge (per-entity net,
   payer `Dr 3102` General / receiver `Cr 3101` per class, accounts from Settings → bridge rules),
-  simple-row → lines, derived bank lines (one per class), split math (amounts or percentages, remainder
+  simple-row → lines, derived bank lines on the row's own bank account (one per class; a transfer's other bank line is an ordinary account line, P1-18), split math (amounts or percentages, remainder
   to the largest share), and every operation: create bank transaction / journal entry (draft or posted),
   edit, inline account/class edit, split, unsplit, post, void, flag, user + system notes, tax-year
   checklist / close / file / re-open, saved views. Every write: lock guard → one audit row with
@@ -52,13 +52,17 @@ Before starting, read the "Notes for Phase 2" section at the bottom of this file
   checklist (two items automatic — "no drafts" and "adjusting entries booked"; three stubbed until
   Phases 4/5/6 — tick by hand or override with a reason), Mark closed (gated), Mark filed, Re-open
   (Owner only, audited override), and the list of overrides on that year.
-- **Tests**: `pnpm test` = 13 files / 108 tests, all green, incl. `tests/core/ledger.test.ts` (23 tests
+- **Tests**: `pnpm test` = 13 files / 113 tests, all green, incl. `tests/core/ledger.test.ts` (28 tests
   against the real database with the restricted role: simple rows, cross-entity bridge in both
   directions, inline edit regenerating the bridge, split by amount and by percent, unsplit, journal
   entries, void, the lock (closed, filed, both entities, date changes, override + audit + count), the
   database invariants, notes, year-end close/file/re-open, saved views), `tests/core/bridge.test.ts`,
   `tests/core/split.test.ts`. Playwright smoke test extended: sign in → enrol → dashboard → **ledger:
   enter and post a transaction** → settings → sign out → sign in again.
+- **Fix on 2026-09-13** (found by Jamin during verification): a row whose account is another bank
+  account (a transfer) showed $0.00 and could not be edited, because every bank-type line was treated as
+  derived. Now only the row's own bank account line is derived (DECISIONS P1-18); the account picker
+  keeps bank accounts in a separate "transfers" group at the bottom and hides closed bank accounts.
 - **Checks on 2026-09-12**: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e` all green, plus a
   manual browser walk-through of every flow in the definition of done (create, edit, split, unsplit,
   void, journal entry, cross-entity row seen from both entities, checklist → close → warning →
@@ -89,6 +93,9 @@ What to click, in order:
    ledger, edit a posted row: the full-screen warning appears, asks for a reason, and the banner then
    says "overridden 1 time". **Settings → Activity** shows every one of these actions (filter
    "Closed-year overrides only").
+7. A **transfer** between your own accounts: New transaction on 1101 with Account = **1104 Venmo** (the
+   bank accounts sit in their own group at the bottom of the list). Two lines, no bridge, and the row
+   shows the amount that moved. Closed bank accounts such as the old 1102 are not offered.
 
 The dev database still holds the walk-through rows (three posted, one voided, in SREI/PLA 2025), the
 smoke test's "Smoke Vendor" rows, and PLA 2025 was closed and re-opened (override count 1). They are
@@ -149,3 +156,6 @@ harmless examples; `pnpm db:recreate` wipes everything (you will re-enrol your a
   (`applyLockOverride` in `src/lib/ledger/locks.ts`, or `set_config('app.lock_override_reason', …, true)`
   in the same transaction) and record one audit row for the import rather than one per year.
 - Keep `seq` for the app; the workbook's Transaction # goes in `source_ref`.
+- For a 2019–2024 entry that touches two bank accounts (a transfer), set `bank_account_id` to the bank
+  the row was entered from (the `1101` side when in doubt): it decides which bank line is the derived
+  side, which one is editable, and the sign of the amount the ledger shows (P1-18).

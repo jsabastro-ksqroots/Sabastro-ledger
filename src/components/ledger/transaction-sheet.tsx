@@ -187,8 +187,8 @@ export function TransactionSheet({
             <div className="space-y-3">
               <div className="text-muted-foreground flex items-center justify-between text-xs">
                 <span>
-                  Debits equal credits for each business. Bank and bridge lines are derived from the
-                  account/class lines.
+                  Debits equal credits for each business. The line on this row&apos;s own bank
+                  account and the bridge lines are derived from the account/class lines.
                 </span>
                 <label className="flex items-center gap-1.5">
                   <input
@@ -280,7 +280,7 @@ function LinesTable({
                   "border-t",
                   replaced && "text-muted-foreground line-through",
                   l.isBridge && !replaced && "bg-amber-50/40",
-                  l.isBank && !replaced && "bg-muted/30",
+                  l.isDerived && !l.isBridge && !replaced && "bg-muted/30",
                 )}
               >
                 <td className="tabular px-2 py-1">{l.lineNo}</td>

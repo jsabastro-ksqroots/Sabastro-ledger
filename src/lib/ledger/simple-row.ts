@@ -8,9 +8,10 @@
  * This is right for every account type (a −500 to 3102 Capital Distribution is Dr 3102 / Cr bank; a
  * +1,000 to 3101 is Dr bank / Cr 3101; a security deposit received is Dr bank / Cr 2101).
  *
- * Bank lines are *derived*: for a bank-centric transaction the app regenerates them from the other lines,
- * one bank line per class (so each class balances on its own and the per-class "Bank" column the workbook
- * reconciliation uses stays meaningful). Pure module: no database access.
+ * The lines on a bank-centric transaction's OWN bank account are *derived*: the app regenerates them from
+ * the other lines, one per class (so each class balances on its own and the per-class "Bank" column the
+ * workbook reconciliation uses stays meaningful). A line on another own bank account (a transfer) is an
+ * ordinary user line. Pure module: no database access.
  */
 import { LedgerError } from "./errors";
 

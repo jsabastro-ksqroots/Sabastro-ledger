@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPrismaClient, db, disconnectDb } from "@/lib/db";
 import { runSeed } from "@/lib/seed/run-seed";
-import { createBankAccount, createEntity } from "@/lib/org/entities";
+import { createBankAccount, createEntity, updateBankAccount } from "@/lib/org/entities";
 import { LedgerError, LockedYearError } from "@/lib/ledger/errors";
 import {
   createBankTransaction,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/ledger/transactions";
 import { loadRefData } from "@/lib/ledger/ref-data";
 import { addSystemNote, setUserNote } from "@/lib/ledger/notes";
-import { getTransactionDetail, listLedgerRows } from "@/lib/ledger/query";
+import { getTransactionDetail, listLedgerRows, loadPickerData } from "@/lib/ledger/query";
 import {
   closeTaxYear,
   fileTaxYear,
@@ -313,6 +313,193 @@ describe("simple rows", () => {
     // An unchanged edit keeps every line as it is.
     const same = await run((tx) => updateBankTransaction(tx, actor, t.id, { memo: "note" }));
     expect(same.lines).toHaveLength(4);
+  });
+});
+
+describe("transfers between own bank accounts", () => {
+  it("same entity: the other bank's line is the editable account line, the amount is the movement, and there is no bridge", async () => {
+    // A second bank account of TA, so the transfer stays inside one entity.
+    const a2 = await createBankAccount(owner, actor, {
+      entityId: TA.id,
+      newAccount: { number: await freeNumber(), name: "Test A savings" },
+      name: "A savings",
+      kind: "SAVINGS",
+    });
+    const t = await run((tx) =>
+      createBankTransaction(tx, actor, {
+        bankAccountId: bankA,
+        date: "2025-08-03",
+        vendor: "Transfer from savings",
+        amountCents: 20020n,
+        accountId: a2.accountId,
+        classId: clsA,
+        post: true,
+      }),
+    );
+    const live = liveLines(t);
+    expect(live).toHaveLength(2);
+    expect(live.some((l) => l.isBridge)).toBe(false);
+    expect(byAccount(t, bankAAccountId)[0]).toMatchObject({ debitCents: 20020n, entityId: TA.id });
+    expect(byAccount(t, a2.accountId)[0]).toMatchObject({ creditCents: 20020n, entityId: TA.id });
+    const ref = await loadRefData(db);
+    const user = userLinesOf(ref, t);
+    expect(user).toHaveLength(1);
+    expect(user[0]?.accountId).toBe(a2.accountId);
+    const rows = await listLedgerRows(db, { entityId: TA.id, year: 2025 });
+    const row = rows.find((r) => r.id === t.id)!;
+    expect(row.amountCents).toBe(20020);
+    expect(row.primaryLineId).toBe(user[0]!.id);
+    expect(row.accountLabel).toContain("Test A savings");
+    expect(row.isSplit).toBe(false);
+    expect(row.lines.find((l) => l.accountId === a2.accountId)).toMatchObject({
+      isBank: true,
+      isDerived: false,
+    });
+    expect(row.lines.find((l) => l.accountId === bankAAccountId)).toMatchObject({
+      isBank: true,
+      isDerived: true,
+    });
+    // The simple-row editor can change it (the earlier code saw "0 user lines" here).
+    const edited = await run((tx) =>
+      updateBankTransaction(tx, actor, t.id, {
+        amountCents: -5000n,
+        accountId: EXPENSE,
+        classId: clsA2,
+      }),
+    );
+    expect(userLinesOf(ref, edited)).toHaveLength(1);
+    expect(userLinesOf(ref, edited)[0]).toMatchObject({ accountId: EXPENSE, debitCents: 5000n });
+    expect(liveLines(edited)).toHaveLength(2);
+    const rows2 = await listLedgerRows(db, { entityId: TA.id, year: 2025 });
+    expect(rows2.find((r) => r.id === t.id)?.amountCents).toBe(-5000);
+  });
+
+  it("across entities: the transfer gets the usual bridge, and the amount follows the row's own bank", async () => {
+    const t = await run((tx) =>
+      createBankTransaction(tx, actor, {
+        bankAccountId: bankA,
+        date: "2025-08-04",
+        vendor: "Transfer from B",
+        amountCents: 20020n,
+        accountId: bankBAccountId,
+        classId: clsA,
+        post: true,
+      }),
+    );
+    const live = liveLines(t);
+    expect(live).toHaveLength(4);
+    const bridge = live.filter((l) => l.isBridge);
+    expect(bridge).toHaveLength(2);
+    expect(bridge.find((l) => l.entityId === TB.id)).toMatchObject({
+      accountId: A3102,
+      classId: general,
+      debitCents: 20020n,
+    });
+    expect(bridge.find((l) => l.entityId === TA.id)).toMatchObject({
+      accountId: A3101,
+      classId: clsA,
+      creditCents: 20020n,
+    });
+    const ref = await loadRefData(db);
+    expect(userLinesOf(ref, t)[0]).toMatchObject({
+      accountId: bankBAccountId,
+      creditCents: 20020n,
+      entityId: TB.id,
+    });
+    const rows = await listLedgerRows(db, { entityId: TB.id, year: 2025 });
+    expect(rows.find((r) => r.id === t.id)?.amountCents).toBe(20020);
+  });
+
+  it("a journal entry keeps a cash amount when it touches exactly one bank account", async () => {
+    const one = await run((tx) =>
+      createJournalEntry(tx, actor, {
+        entityId: TA.id,
+        date: "2025-08-05",
+        vendor: "Opening contribution",
+        adjusting: false,
+        lines: [
+          { accountId: bankAAccountId, classId: general, debitCents: 100000n, creditCents: 0n },
+          { accountId: A3101, classId: general, debitCents: 0n, creditCents: 100000n },
+        ],
+        post: true,
+      }),
+    );
+    const rows = await listLedgerRows(db, { entityId: TA.id, year: 2025 });
+    expect(rows.find((r) => r.id === one.id)?.amountCents).toBe(100000);
+    const noBank = rows.find((r) => r.kind === "ADJUSTING" && r.vendor === "Depreciation 2025");
+    if (noBank) expect(noBank.amountCents).toBeNull();
+  });
+
+  it("refuses a closed bank account as a new counterpart after its closing date, but keeps existing rows editable", async () => {
+    const a3 = await createBankAccount(owner, actor, {
+      entityId: TA.id,
+      newAccount: { number: await freeNumber(), name: "Test A money market" },
+      name: "A money market",
+      kind: "SAVINGS",
+    });
+    const sweep = {
+      bankAccountId: bankA,
+      vendor: "Sweep",
+      amountCents: -30000n,
+      accountId: a3.accountId,
+      classId: clsA,
+      post: true,
+    };
+    const before = await run((tx) =>
+      createBankTransaction(tx, actor, { ...sweep, date: "2025-08-06" }),
+    );
+    await updateBankAccount(owner, actor, a3.id, { isActive: false, closedOn: "2025-08-31" });
+    await expect(
+      run((tx) => createBankTransaction(tx, actor, { ...sweep, date: "2025-09-01" })),
+    ).rejects.toThrow(/closed bank account \(closed 2025-08-31\)/);
+    const early = await run((tx) =>
+      createBankTransaction(tx, actor, { ...sweep, date: "2025-08-15" }),
+    );
+    expect(early.status).toBe("POSTED");
+    const renamed = await run((tx) =>
+      updateBankTransaction(tx, actor, before.id, { vendor: "Sweep to money market" }),
+    );
+    expect(renamed.vendor).toBe("Sweep to money market");
+    const other = await run((tx) =>
+      createBankTransaction(tx, actor, {
+        bankAccountId: bankA,
+        date: "2025-09-02",
+        vendor: "Fees",
+        amountCents: -100n,
+        accountId: EXPENSE,
+        classId: clsA,
+        post: true,
+      }),
+    );
+    const ref = await loadRefData(db);
+    await expect(
+      run((tx) =>
+        setLineAccountClass(tx, actor, userLinesOf(ref, other)[0]!.id, { accountId: a3.accountId }),
+      ),
+    ).rejects.toThrow(/closed bank account/);
+  });
+
+  it("marks the ledger accounts of closed bank accounts so the pickers can hide them", async () => {
+    const closed = await createBankAccount(owner, actor, {
+      entityId: TA.id,
+      newAccount: { number: await freeNumber(), name: "Test A old checking" },
+      name: "A old checking",
+      kind: "CHECKING",
+    });
+    await updateBankAccount(owner, actor, closed.id, { isActive: false });
+    const picker = await loadPickerData(db);
+    expect(picker.accounts.find((a) => a.id === closed.accountId)).toMatchObject({
+      isBank: true,
+      isClosedBank: true,
+    });
+    expect(picker.accounts.find((a) => a.id === bankAAccountId)).toMatchObject({
+      isBank: true,
+      isClosedBank: false,
+    });
+    expect(picker.accounts.find((a) => a.id === EXPENSE)).toMatchObject({
+      isBank: false,
+      isClosedBank: false,
+    });
   });
 });
 

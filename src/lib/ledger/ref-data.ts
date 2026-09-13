@@ -21,6 +21,7 @@ export interface RefBankAccount {
   accountId: string;
   name: string;
   isActive: boolean;
+  closedOn: Date | null;
   accountNumber: string;
   accountName: string;
 }
@@ -70,6 +71,7 @@ export async function loadRefData(tx: DbOrTx): Promise<RefData> {
         accountId: true,
         name: true,
         isActive: true,
+        closedOn: true,
         account: { select: { number: true, name: true } },
       },
     }),
@@ -108,6 +110,7 @@ export async function loadRefData(tx: DbOrTx): Promise<RefData> {
     accountId: b.accountId,
     name: b.name,
     isActive: b.isActive,
+    closedOn: b.closedOn,
     accountNumber: b.account.number,
     accountName: b.account.name,
   }));

@@ -31,9 +31,10 @@ import { isUnposted, type TransactionSourceKey, type TransactionStatusKey } from
  *  - Lines are never edited in place. A change computes the full set of lines the transaction should
  *    have, keeps the ones that are identical, supersedes the rest (stamped with the audit row that
  *    replaced them) and inserts the new ones. This holds for drafts too, so there is one code path.
- *  - For a bank-centric transaction the bank lines (one per class, opposite side) and the cross-entity
- *    bridge lines are derived from the user's lines and regenerated on every change; users edit only
- *    the "user lines" (the account/class side).
+ *  - For a bank-centric transaction the lines on its OWN bank account (one per class, opposite side)
+ *    and the cross-entity bridge lines are derived from the user's lines and regenerated on every
+ *    change; users edit only the "user lines" (the account/class side). A line on another own bank
+ *    account — a transfer — is a user line (DECISIONS P1-18).
  *  - Every write first runs the tax-year lock guard, then writes the audit row, then the data.
  */
 
@@ -92,14 +93,19 @@ export function liveLines(t: { lines: LoadedLine[] }): LoadedLine[] {
   return t.lines.filter((l) => l.supersededAt === null);
 }
 
-/** Bank lines of a bank-centric transaction and bridge lines are derived; everything else is a user line. */
+/**
+ * Bridge lines, and the lines on a bank-centric transaction's OWN bank account, are derived; everything
+ * else is a user line. A line on another bank account's ledger account (a transfer) is a user line.
+ */
 export function isDerivedLine(
   ref: RefData,
-  t: { kind: string },
+  t: { kind: string; bankAccountId: string | null },
   line: { isBridge: boolean; accountId: string | null },
 ): boolean {
   if (line.isBridge) return true;
-  return t.kind === "BANK" && !!line.accountId && ref.bankByAccountId.has(line.accountId);
+  if (t.kind !== "BANK" || !t.bankAccountId || !line.accountId) return false;
+  const own = ref.bankAccounts.get(t.bankAccountId);
+  return !!own && line.accountId === own.accountId;
 }
 
 export function userLinesOf(ref: RefData, t: LoadedTransaction): LoadedLine[] {
@@ -121,7 +127,18 @@ function cleanText(value: string | null | undefined, max: number, label: string)
   return s;
 }
 
-function requireAccount(ref: RefData, accountId: string | null, label: string, required: boolean) {
+/** The account ids a set of lines already uses (those may stay even when the bank behind them has closed). */
+function accountIdsOf(lines: readonly { accountId: string | null }[]): Set<string> {
+  return new Set(lines.map((l) => l.accountId).filter((id): id is string => !!id));
+}
+
+function requireAccount(
+  ref: RefData,
+  accountId: string | null,
+  label: string,
+  required: boolean,
+  closedBank: { date: Date; keepAccountIds: ReadonlySet<string> } | null = null,
+) {
   if (!accountId) {
     if (required) throw new LedgerError(`${label}: pick an account.`);
     return null;
@@ -129,6 +146,16 @@ function requireAccount(ref: RefData, accountId: string | null, label: string, r
   const a = ref.accounts.get(accountId);
   if (!a) throw new LedgerError(`${label}: that account does not exist.`);
   if (!a.isActive) throw new LedgerError(`${label}: ${a.number} ${a.name} is inactive.`);
+  // A closed bank account may keep the rows it already has, and may take rows dated up to its closing
+  // date; it cannot become the counterpart of anything newer (the picker hides it for the same reason).
+  const bank = ref.bankByAccountId.get(accountId);
+  if (closedBank && bank && !bank.isActive && !closedBank.keepAccountIds.has(accountId)) {
+    if (!bank.closedOn || closedBank.date > bank.closedOn) {
+      throw new LedgerError(
+        `${label}: ${a.number} ${a.name} is a closed bank account${bank.closedOn ? ` (closed ${toIsoDate(bank.closedOn)})` : ""}. Reactivate it in Settings → Entities & bank accounts to use it.`,
+      );
+    }
+  }
   return a;
 }
 
@@ -146,11 +173,19 @@ function requireClass(ref: RefData, classId: string | null, label: string, requi
 function validateUserLines(
   ref: RefData,
   inputs: readonly UserLineInput[],
-  opts: { requireComplete: boolean; bankLedgerAccountId?: string | null },
+  opts: {
+    requireComplete: boolean;
+    bankLedgerAccountId?: string | null;
+    /** The transaction's date: a closed bank account is refused as a new counterpart after its closing date. */
+    date: Date;
+    /** Accounts the transaction already uses (an existing counterpart on a closed bank stays valid). */
+    keepAccountIds?: ReadonlySet<string>;
+  },
 ): void {
+  const closedBank = { date: opts.date, keepAccountIds: opts.keepAccountIds ?? new Set<string>() };
   inputs.forEach((l, i) => {
     const label = `Line ${i + 1}`;
-    requireAccount(ref, l.accountId, label, opts.requireComplete);
+    requireAccount(ref, l.accountId, label, opts.requireComplete, closedBank);
     requireClass(ref, l.classId, label, opts.requireComplete);
     if (l.debitCents < 0n || l.creditCents < 0n)
       throw new LedgerError(`${label}: amounts cannot be negative.`);
@@ -490,7 +525,11 @@ export async function createBankTransaction(
     accountId: input.accountId,
     classId: input.classId,
   });
-  validateUserLines(ref, [primary], { requireComplete: true, bankLedgerAccountId: bank.accountId });
+  validateUserLines(ref, [primary], {
+    requireComplete: true,
+    bankLedgerAccountId: bank.accountId,
+    date,
+  });
   const status: TransactionStatusKey = input.post ? "POSTED" : "DRAFT";
   const head = { kind: "BANK", entityId: bank.entityId, bankAccountId: bank.id };
   const desired = buildDesiredLines(ref, head, [primary]);
@@ -584,7 +623,7 @@ export async function createJournalEntry(
     memo: cleanText(l.memo, 500, "Line memo"),
     parentLineId: null,
   }));
-  validateUserLines(ref, lines, { requireComplete: input.post });
+  validateUserLines(ref, lines, { requireComplete: input.post, date });
   const kind = input.adjusting ? "ADJUSTING" : "JOURNAL";
   const status: TransactionStatusKey = input.post ? "POSTED" : "DRAFT";
   const desired = buildDesiredLines(ref, { kind, entityId: entity.id, bankAccountId: null }, lines);
@@ -750,7 +789,9 @@ export async function updateBankTransaction(
     input.amountCents !== undefined || input.accountId !== undefined || input.classId !== undefined;
   if (wantsRowChange && current.length !== 1)
     throw new LedgerError(
-      `This transaction is split into ${current.length} lines. Edit the lines one by one, or unsplit it first.`,
+      current.length === 0
+        ? "This transaction has no account line to edit. Open its details panel, or void it and enter it again."
+        : `This transaction is split into ${current.length} lines. Edit the lines one by one, or unsplit it first.`,
     );
 
   let userLines: UserLineInput[];
@@ -777,12 +818,14 @@ export async function updateBankTransaction(
       allocationTargetId: l.allocationTargetId,
     }));
   }
+  const date = input.date === undefined ? t.date : parseCalendarDate(input.date);
   validateUserLines(ref, userLines, {
     requireComplete: t.status === "POSTED",
     bankLedgerAccountId: bank.accountId,
+    date,
+    keepAccountIds: accountIdsOf(current),
   });
 
-  const date = input.date === undefined ? t.date : parseCalendarDate(input.date);
   const vendor = input.vendor === undefined ? t.vendor : cleanText(input.vendor, 200, "Vendor");
   if (!vendor) throw new LedgerError("Enter the vendor or payee.");
   const memo = input.memo === undefined ? t.memo : cleanText(input.memo, 2000, "Memo");
@@ -859,7 +902,11 @@ export async function updateJournalEntry(
         allocationTargetId: l.allocationTargetId,
       }));
   if (userLines.length < 2) throw new LedgerError("A journal entry needs at least two lines.");
-  validateUserLines(ref, userLines, { requireComplete: t.status === "POSTED" });
+  validateUserLines(ref, userLines, {
+    requireComplete: t.status === "POSTED",
+    date,
+    keepAccountIds: accountIdsOf(userLinesOf(ref, t)),
+  });
   const desired = buildDesiredLines(
     ref,
     { kind, entityId: entity.id, bankAccountId: null },
@@ -915,6 +962,8 @@ export async function setLineAccountClass(
   validateUserLines(ref, userLines, {
     requireComplete: t.status === "POSTED",
     bankLedgerAccountId: bank?.accountId ?? null,
+    date: t.date,
+    keepAccountIds: accountIdsOf(userLinesOf(ref, t)),
   });
   const desired = buildDesiredLines(
     ref,
@@ -986,6 +1035,8 @@ export async function splitLine(
   validateUserLines(ref, userLines, {
     requireComplete: t.status === "POSTED",
     bankLedgerAccountId: bank?.accountId ?? null,
+    date: t.date,
+    keepAccountIds: accountIdsOf(userLinesOf(ref, t)),
   });
   const desired = buildDesiredLines(
     ref,
@@ -1076,6 +1127,8 @@ export async function unsplitLine(
   validateUserLines(ref, userLines, {
     requireComplete: t.status === "POSTED",
     bankLedgerAccountId: bank?.accountId ?? null,
+    date: t.date,
+    keepAccountIds: accountIdsOf(userLinesOf(ref, t)),
   });
   const desired = buildDesiredLines(
     ref,

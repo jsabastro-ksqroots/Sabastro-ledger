@@ -221,7 +221,12 @@ function TransactionForm({
             onChange={setAccountId}
             disabled={locked}
             excludeAccountId={bank?.accountId ?? null}
+            bankGroupLabel="Bank accounts (only for a transfer between your own accounts)"
           />
+          <p className="text-muted-foreground text-xs">
+            Where the money went or came from: an expense, income, asset, liability or equity
+            account. Pick a bank account only to record a transfer between your own accounts.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="tx-class">Class</Label>

@@ -58,9 +58,12 @@ export interface LedgerRow {
   entityCode: string;
   bankAccountId: string | null;
   bankLabel: string | null;
-  /** Signed cents from the bank's point of view (money in positive); null for a journal with no bank line. */
+  /**
+   * Signed cents through the row's bank account (money in positive). For a journal entry it is the
+   * movement on its single bank account; null when the journal touches no bank account or several.
+   */
   amountCents: number | null;
-  /** Magnitude: |amount| or, for journals without a bank line, the total debits. */
+  /** Magnitude: |amount| or, for a journal with no bank line (or several), the total debits. */
   totalCents: number;
   accountId: string | null;
   accountLabel: string;
@@ -162,8 +165,24 @@ export function toLedgerRow(
 ): LedgerRow {
   const live = t.lines.filter((l) => l.supersededAt === null);
   const user = live.filter((l) => !isDerivedLine(ref, t, l));
-  const isBank = (accountId: string | null) => !!accountId && ref.bankByAccountId.has(accountId);
-  const amount = bankAmount(live, isBank);
+  // The signed amount is what moved through the row's own bank account (a transfer to another own
+  // account therefore shows the movement, not the zero net across both banks). A journal entry that
+  // touches exactly one bank account (an opening balance, a contribution) is read the same way; one
+  // that touches several has no single cash movement to show.
+  const ownBank = t.bankAccountId ? ref.bankAccounts.get(t.bankAccountId) : null;
+  let amount: bigint | null = null;
+  if (ownBank) {
+    amount = bankAmount(live, (accountId) => accountId === ownBank.accountId);
+  } else {
+    const bankIds = [
+      ...new Set(
+        live
+          .filter((l) => l.accountId && ref.bankByAccountId.has(l.accountId))
+          .map((l) => l.accountId as string),
+      ),
+    ];
+    if (bankIds.length === 1) amount = bankAmount(live, (accountId) => accountId === bankIds[0]);
+  }
   const totalCents =
     amount !== null
       ? amount < 0n
@@ -372,6 +391,8 @@ export interface PickerData {
     type: string;
     subType: string;
     isBank: boolean;
+    /** The ledger account of a closed (inactive) bank account: offered only when it is already the chosen value. */
+    isClosedBank: boolean;
   }[];
   classes: { id: string; name: string; entityId: string; entityCode: string; isShared: boolean }[];
   generalClassId: string;
@@ -403,6 +424,7 @@ export async function loadPickerData(tx: DbOrTx): Promise<PickerData> {
       type: a.type,
       subType: a.subType,
       isBank: ref.bankByAccountId.has(a.id),
+      isClosedBank: ref.bankByAccountId.get(a.id)?.isActive === false,
     }));
   const classes = [...ref.classes.values()]
     .filter((c) => c.isActive)

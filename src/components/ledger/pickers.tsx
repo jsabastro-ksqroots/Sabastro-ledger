@@ -26,6 +26,7 @@ export function AccountSelect({
   disabled,
   autoFocus,
   excludeAccountId,
+  bankGroupLabel = "Bank accounts",
 }: {
   accounts: PickerData["accounts"];
   value: string;
@@ -38,6 +39,8 @@ export function AccountSelect({
   autoFocus?: boolean;
   /** The bank account's own ledger account, which a simple row must not point at. */
   excludeAccountId?: string | null;
+  /** Heading of the bank-accounts group at the bottom of the list. */
+  bankGroupLabel?: string;
 }) {
   return (
     <select
@@ -51,19 +54,36 @@ export function AccountSelect({
     >
       <option value="">{placeholder}</option>
       {TYPE_ORDER.map((type) => {
-        const group = accounts.filter((a) => a.type === type && a.id !== excludeAccountId);
+        const group = accounts.filter(
+          (a) => a.type === type && !a.isBank && a.id !== excludeAccountId,
+        );
         if (group.length === 0) return null;
         return (
           <optgroup key={type} label={TYPE_LABEL[type]}>
             {group.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.number} {a.name}
-                {a.isBank ? " (bank)" : ""}
               </option>
             ))}
           </optgroup>
         );
       })}
+      {(() => {
+        // Closed bank accounts stay out of the list unless the row already points at one.
+        const banks = accounts.filter(
+          (a) => a.isBank && a.id !== excludeAccountId && (!a.isClosedBank || a.id === value),
+        );
+        if (banks.length === 0) return null;
+        return (
+          <optgroup label={bankGroupLabel}>
+            {banks.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.number} {a.name} {a.isClosedBank ? "(closed bank account)" : "(bank)"}
+              </option>
+            ))}
+          </optgroup>
+        );
+      })()}
     </select>
   );
 }
