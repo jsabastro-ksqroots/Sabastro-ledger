@@ -70,7 +70,7 @@ Anywhere else: follow `docs/HOW_TO_RUN.md`.
 ## Blocked / needs a human
 
 - ~~GitHub push~~ **Done 2026-09-12:** the private repository
-  `git@github.com:jsabastro-ksqroots/sabastro-ledger.git` exists and `main` is pushed. Every phase ends
+  `git@github.com:jsabastro-ksqroots/Sabastro-ledger.git` exists and `main` is pushed. Every phase ends
   with `git push`.
 - **Docker Desktop** is not installed on this Mac (needs an admin password); the embedded Postgres
   fallback is used instead. `docs/HOW_TO_RUN.md` section 1 explains the normal install.
