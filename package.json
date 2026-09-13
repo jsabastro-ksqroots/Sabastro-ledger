@@ -34,7 +34,8 @@
     "dev:nodocker": "tsx scripts/embedded-db.ts --dev",
     "postinstall": "prisma generate",
     "db:recreate": "tsx scripts/recreate-db.ts",
-    "e2e:install": "playwright install chromium"
+    "e2e:install": "playwright install chromium",
+    "user:set-password": "tsx scripts/set-password.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",
