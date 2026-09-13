@@ -111,7 +111,7 @@ harmless examples; `pnpm db:recreate` wipes everything (you will re-enrol your a
 
 ## Questions for Jose & Jamin (defaults in force meanwhile)
 
-1. The five questions in `docs/DESIGN.md` §7 (PLA launch date, PLA tax form, the old "live app", seed
+1. The questions in `docs/DESIGN.md` §7 (PLA launch date, PLA tax form, seed
    confirmations, sign-in emails).
 2. **Money in for one entity landing in the other's bank** (a PLA client paying into the SREI account):
    the app books it as PLA `Dr 3102 Capital Distribution` and SREI `Cr 3101 Capital Contribution` with

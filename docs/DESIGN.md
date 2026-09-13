@@ -191,7 +191,9 @@ settings change and user change lands in `audit_log`, which the application role
    the sole-proprietor report? (Default in force: 2025-06-02, marked placeholder.)
 2. **PLA's tax form.** Schedule C on Jose's 1040, or an S-corp 1120-S? And is SREI still a 1065
    partnership for 2025? (Default: Schedule C for PLA, 1065 for SREI.)
-3. **The "live app / shared ledger"** that produced the 2025 snapshot: does it still exist, can it
+3. _(Answered 2026-09-13: it is an unfinished V1 Jamin built himself, with nothing to export; the snapshot
+   workbook is the source of truth, and this app is being evaluated as the V1's replacement.)_
+   **The "live app / shared ledger"** that produced the 2025 snapshot: does it still exist, can it
    export its data, and does it hold the 129 receipt files the snapshot references? (Default: treat the
    snapshot workbook as the source of truth.)
 4. **Seed confirmations.** Is `1104 Venmo` the right number and name? Are the inferred parents/types
