@@ -31,6 +31,9 @@ playwright-report/
 playwright/.cache/
 blob-report/
 
+# --- review-agent worktrees ---
+.claude/worktrees/
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db

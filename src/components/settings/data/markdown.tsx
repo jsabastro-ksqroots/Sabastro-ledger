@@ -8,7 +8,8 @@ import type { ReactNode } from "react";
 
 function inline(text: string, key: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_)/g;
+  // Italics only when the underscores sit at word edges, so snake_case identifiers stay intact.
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|(?<![\w])_(?!\s)[^_\n]+?(?<!\s)_(?![\w]))/g;
   let last = 0;
   let i = 0;
   for (const m of text.matchAll(re)) {

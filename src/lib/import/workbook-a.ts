@@ -16,6 +16,7 @@ import {
   type EntryA,
   type EntryKind,
   type SourceLineA,
+  type SubGroupA,
   type WorkbookAExtract,
 } from "./types";
 
@@ -25,6 +26,9 @@ import {
  * the account numbers, classes, names and memos come through exactly as written. The only
  * transformations are the ones DECISIONS P0-1 and P0-3 require: a negative debit becomes a positive
  * credit (and vice-versa), and a zero-amount line carries no money.
+ *
+ * The workbook's Transaction # is a running-balance formula, so a few numbers cover two bookings
+ * (DECISIONS P2-3): the entry is kept together, and its header comes from the bank movement.
  */
 
 const SHEET = "General Ledger";
@@ -80,19 +84,57 @@ function hasSubCent(value: number): boolean {
   return Math.abs(value * 100 - Math.round(value * 100)) > 1e-6;
 }
 
-/** Decides how an entry is stored: through a bank account, or as a (year-end / depreciation) journal. */
+/**
+ * Decides how an entry is stored: through a bank account, or as a (year-end / depreciation) journal.
+ * An entry whose every money line sits on one bank account (a payment and its reversal) is a journal
+ * too, so both lines stay visible instead of being treated as the derived bank side.
+ */
 export function classifyEntry(
   bankNumbers: BankNumber[],
   date: string,
-  accountNumbers: Iterable<string>,
+  accountNumbers: string[],
 ): { kind: EntryKind; primaryBank: BankNumber | null } {
-  if (bankNumbers.length > 0) {
+  const allOnOneBank =
+    accountNumbers.length > 0 && bankNumbers.length === 1 && accountNumbers.every(isBankNumber);
+  if (bankNumbers.length > 0 && !allOnOneBank) {
     const primary = bankNumbers.includes("1101") ? "1101" : (bankNumbers[0] as BankNumber);
     return { kind: "BANK", primaryBank: primary };
   }
-  const touchesDepreciation = [...accountNumbers].some((n) => DEPRECIATION_ACCOUNTS.has(n));
+  if (allOnOneBank) return { kind: "JOURNAL", primaryBank: null };
+  const touchesDepreciation = accountNumbers.some((n) => DEPRECIATION_ACCOUNTS.has(n));
   const yearEnd = date.endsWith("-12-31");
   return { kind: touchesDepreciation || yearEnd ? "ADJUSTING" : "JOURNAL", primaryBank: null };
+}
+
+/** Cuts the money lines of one entry wherever the running debit − credit balance returns to zero. */
+export function subGroupsOf(money: readonly SourceLineA[]): SubGroupA[] {
+  const groups: SubGroupA[] = [];
+  let cur: SourceLineA[] = [];
+  let balance = 0n;
+  const flush = () => {
+    if (cur.length === 0) return;
+    const nonBank = cur.filter((l) => !isBankNumber(l.accountNumber));
+    groups.push({
+      firstRow: cur[0]?.row ?? 0,
+      lastRow: cur[cur.length - 1]?.row ?? 0,
+      dates: [...new Set(cur.map((l) => l.date))].sort(),
+      name: cur.find((l) => l.name)?.name ?? null,
+      memo: cur.find((l) => l.memo)?.memo ?? null,
+      touchesBank: cur.some((l) => isBankNumber(l.accountNumber)),
+      totalCents: cur.reduce((t, l) => t + l.debitCents, 0n),
+      accounts: (nonBank.length ? nonBank : cur)
+        .slice(0, 2)
+        .map((l) => `${l.accountLabel} · ${l.className}`),
+    });
+    cur = [];
+  };
+  for (const l of money) {
+    cur.push(l);
+    balance += l.debitCents - l.creditCents;
+    if (balance === 0n) flush();
+  }
+  flush(); // an unbalanced tail (never happens in a balanced workbook) still counts as a group
+  return groups;
 }
 
 /** Groups normalised lines into entries. Pure, so tests can feed it hand-made lines. */
@@ -107,8 +149,22 @@ export function groupEntries(lines: readonly SourceLineA[]): EntryA[] {
   for (const [txn, all] of byTxn) {
     const money = all.filter((l) => !l.isZero);
     const zero = all.filter((l) => l.isZero);
+    const subGroups = subGroupsOf(money);
+    const bankGroups = subGroups.filter((g) => g.touchesBank);
+    const isMerged =
+      subGroups.length >= 2 && bankGroups.length === 1 && subGroups.some((g) => !g.touchesBank);
+    // The header describes what the users will see as the row: the bank movement when the workbook
+    // lumped a non-cash booking with it, otherwise the whole entry.
+    const headerLines = isMerged
+      ? money.filter(
+          (l) =>
+            l.row >= (bankGroups[0] as SubGroupA).firstRow &&
+            l.row <= (bankGroups[0] as SubGroupA).lastRow,
+        )
+      : all;
     const dates = [...new Set(all.map((l) => l.date))];
-    const first = all[0] as SourceLineA;
+    const date =
+      [...new Set(headerLines.map((l) => l.date))].sort()[0] ?? (all[0] as SourceLineA).date;
     // A zero-amount placeholder (P0-3) keeps the bank its zero lines named, so it sits in that bank's ledger.
     const source = money.length > 0 ? money : all;
     const bankNumbers = [
@@ -116,23 +172,30 @@ export function groupEntries(lines: readonly SourceLineA[]): EntryA[] {
     ] as BankNumber[];
     const { kind, primaryBank } = classifyEntry(
       bankNumbers,
-      first.date,
+      date,
       source.map((l) => l.accountNumber),
     );
+    const isSelfCancelling =
+      money.length > 0 &&
+      bankNumbers.length === 1 &&
+      money.every((l) => isBankNumber(l.accountNumber));
     let imbalance = 0n;
     for (const l of money) imbalance += l.debitCents - l.creditCents;
     entries.push({
       txn,
-      date: first.date,
+      date,
       lines: money,
       zeroLines: zero,
-      vendor: all.find((l) => l.name)?.name ?? null,
-      memo: all.find((l) => l.memo)?.memo ?? null,
+      vendor: headerLines.find((l) => l.name)?.name ?? all.find((l) => l.name)?.name ?? null,
+      memo: headerLines.find((l) => l.memo)?.memo ?? all.find((l) => l.memo)?.memo ?? null,
       bankNumbers,
       primaryBank,
       kind,
       isVoidPlaceholder: money.length === 0,
       mixedDates: dates.length > 1,
+      subGroups,
+      isMerged,
+      isSelfCancelling,
       imbalanceCents: imbalance,
     });
   }

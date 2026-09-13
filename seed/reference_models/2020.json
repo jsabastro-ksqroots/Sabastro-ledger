@@ -233,7 +233,7 @@
       "headerCell": "J4",
       "basis": "PERCENT",
       "secondaryBasis": null,
-      "description": "Clubhouse, Land to Develop and Our House only (Shed excluded), weighted by Total Value (E6:E8, total 875,000) and ROUNDED to 2 decimals in the sheet: 0.43 / 0.40 / 0.17. Recomputing weight / sum gives 0.428571 / 0.400295 / 0.171134 (see unroundedShare); the rounded values still sum to 1.00 (J9). The percentages are typed by hand in the sheet (43 / 40 / 17 %), not computed from the values.",
+      "description": "Clubhouse, Land to Develop and Our House only (Shed excluded), weighted by Total Value (E6:E8, total 875,000) and ROUNDED to whole percents by the sheet's formulas (J6:J8 = ROUND(E/SUM(E6:E8), 2)): 0.43 / 0.40 / 0.17. Stored as manual percentages because the rounded shares, not weight ÷ sum, are what the year used; the unrounded value shares would be 0.428571 / 0.400295 / 0.171134.",
       "rounding": "ROUND(value / SUM(E6:E8), 2)",
       "cellRange": "J6:J9",
       "totalCell": "J9",
@@ -249,7 +249,9 @@
           "share": 0.43,
           "shareCell": "J6",
           "unroundedShare": 0.428571,
-          "valueWeightNote": "The sheet gives no weight for this column; the share is typed by hand (the property value 375000 is listed on the row)."
+          "note": "Share = ROUND(value / SUM(E6:E8), 2) in the sheet; the value itself is under valueWeight.",
+          "valueWeight": 375000,
+          "valueWeightCell": "E6"
         },
         {
           "label": "The Land to Develop",
@@ -261,7 +263,9 @@
           "share": 0.4,
           "shareCell": "J7",
           "unroundedShare": 0.400295,
-          "valueWeightNote": "The sheet gives no weight for this column; the share is typed by hand (the property value 350257.731959 is listed on the row)."
+          "note": "Share = ROUND(value / SUM(E6:E8), 2) in the sheet; the value itself is under valueWeight.",
+          "valueWeight": 350257.731959,
+          "valueWeightCell": "E7"
         },
         {
           "label": "Our House",
@@ -273,7 +277,9 @@
           "share": 0.17,
           "shareCell": "J8",
           "unroundedShare": 0.171134,
-          "valueWeightNote": "The sheet gives no weight for this column; the share is typed by hand (the property value 149742.268041 is listed on the row)."
+          "note": "Share = ROUND(value / SUM(E6:E8), 2) in the sheet; the value itself is under valueWeight.",
+          "valueWeight": 149742.268041,
+          "valueWeightCell": "E8"
         }
       ],
       "usedFor": [

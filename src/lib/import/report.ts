@@ -15,6 +15,7 @@ export interface ImportSummary {
   actorName: string;
   outcome: "SUCCEEDED" | "FAILED" | "DRY_RUN";
   error: string | null;
+  reportFileWarning?: string | null;
   sources: { key: "A" | "B"; file: string; path: string; sha256: string; bytes: number }[];
   extraction: {
     a: {
@@ -26,6 +27,17 @@ export interface ImportSummary {
       kindsByYear: Record<string, Record<string, number>>;
       transfers: number[];
       mixedDates: { txn: number; dates: string[] }[];
+      merged: {
+        txn: number;
+        date: string;
+        bankVendor: string;
+        bankAmount: string;
+        otherVendor: string;
+        otherAmount: string;
+        otherAccounts: string;
+        rows: string;
+      }[];
+      selfCancelling: { txn: number; date: string; vendor: string; amount: string; rows: string }[];
       normalised: {
         txn: number;
         row: number;
@@ -94,7 +106,12 @@ export interface ImportSummary {
     year: number;
     sheet: string;
     method: string;
-    verified: { checked: number; mismatches: string[] };
+    verified: {
+      checked: number;
+      mismatches: string[];
+      nonEmptyCells?: number;
+      accountedFor?: number;
+    };
     models: {
       name: string;
       key: string;
@@ -173,11 +190,12 @@ export function renderReport(s: ImportSummary): string {
   const out: string[] = [];
   out.push(`# Import report — historical books (Phase 2)\n`);
   out.push(
-    `Generated ${s.finishedAt} by ${s.actorName} (${s.trigger}${s.dryRun ? ", dry run" : ""}), run \`${s.runId}\`, ${(s.durationMs / 1000).toFixed(1)} s. Outcome: **${s.outcome}**${s.error ? ` — ${s.error}` : ""}.\n`,
+    `Generated ${s.finishedAt} by ${s.actorName} (${s.trigger}${s.dryRun ? ", dry run" : ""}), run \`${s.runId}\`, ${(s.durationMs / 1000).toFixed(1)} s. Outcome: **${s.outcome}**${s.error ? ` — ${s.error.replace(/\.$/, "")}` : ""}.\n`,
   );
   out.push(
     `**${total - failedCritical.length - failedInfo.length} of ${total} checks pass.** ${failedCritical.length === 0 ? "Every critical number ties to the cent." : `${failedCritical.length} critical check${failedCritical.length === 1 ? "" : "s"} failed — nothing was forced; see below.`}${failedInfo.length ? ` ${failedInfo.length} informational check${failedInfo.length === 1 ? " differs" : "s differ"} from the note in the docs (explained inline).` : ""}\n`,
   );
+  if (s.reportFileWarning) out.push(`⚠️ ${s.reportFileWarning}\n`);
   out.push(`## Sources\n`);
   out.push(`| Workbook | File | SHA-256 | Size |\n| --- | --- | --- | ---: |`);
   for (const src of s.sources)
@@ -204,7 +222,7 @@ export function renderReport(s: ImportSummary): string {
     out.push(`_Dry run: everything above was rolled back; nothing changed in the database._\n`);
   if (s.load.lockedYearsTouched.length)
     out.push(
-      `Filed years written with the import's lock override (one audit row for the run, override counts untouched): ${s.load.lockedYearsTouched.join(", ")}.\n`,
+      `Closed or filed years that received rows in this run, written under the import's lock override (one audit row for the run, override counts untouched): ${s.load.lockedYearsTouched.join(", ")}.\n`,
     );
   out.push(
     `Tax years after the run: ${s.taxYears.map((y) => `${y.entity} ${y.year} ${y.state.toLowerCase()}`).join(" · ")}.\n`,
@@ -235,7 +253,7 @@ export function renderReport(s: ImportSummary): string {
       .map(([k, v]) => `${k} ${v}`)
       .join(
         " · ",
-      )}. ${b.unsplit.count} rows tagged needs_model_split (net ${b.unsplit.net}; ${Object.entries(
+      )}. ${b.unsplit.count} rows tagged \`needs_model_split\` (net ${b.unsplit.net}; ${Object.entries(
       b.unsplit.byClass,
     )
       .map(([k, v]) => `${k} ${v}`)
@@ -284,7 +302,7 @@ export function renderReport(s: ImportSummary): string {
     out.push(`### ${y.year} — \`${y.sheet}\`\n`);
     out.push(`${y.method}\n`);
     out.push(
-      `Verified against the workbook: ${y.verified.checked} cells checked, ${y.verified.mismatches.length} mismatch${y.verified.mismatches.length === 1 ? "" : "es"}${y.verified.mismatches.length ? ` — ${y.verified.mismatches.join("; ")}` : ""}.\n`,
+      `Verified against the workbook: ${y.verified.checked} cell-addressed numbers checked, ${y.verified.mismatches.length} mismatch${y.verified.mismatches.length === 1 ? "" : "es"}${y.verified.mismatches.length ? ` — ${y.verified.mismatches.join("; ")}` : ""}${y.verified.nonEmptyCells ? `; the transcription accounts for ${y.verified.accountedFor ?? 0} of the sheet's ${y.verified.nonEmptyCells} non-empty cells` : ""}.\n`,
     );
     for (const m of y.models) {
       out.push(
@@ -302,7 +320,7 @@ export function renderReport(s: ImportSummary): string {
     }
     if (y.bills.length)
       out.push(
-        `Specific bills allocated: ${y.bills.map((bill) => `${bill.label} ${bill.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}${bill.setKey ? ` (${bill.setKey})` : ""}`).join("; ")}.\n`,
+        `Specific bills allocated: ${y.bills.map((bill) => `${bill.label} ${bill.total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${bill.setKey ? ` (\`${bill.setKey}\`)` : ""}`).join("; ")}.\n`,
       );
   }
   out.push(checkSections(s.checks.models));
@@ -348,7 +366,21 @@ export function renderReport(s: ImportSummary): string {
     `- Zero-amount entries (P0-3): transactions ${a.zeroEntries.join(", ")} are voided placeholders with no lines.`,
   );
   out.push(
-    `- Entries whose lines carry two dates: ${a.mixedDates.map((m) => `#${m.txn} (${m.dates.join(" / ")})`).join(", ") || "none"}; the earliest date is used and both are kept in the system note.`,
+    `- Workbook numbers that cover two bookings (kept together, decision P2-3): ${a.merged.length}. Each row is dated on the bank movement and carries its vendor; the rent booking sits in the journal lines. ${a.mixedDates.length} of them carry two dates in the workbook (${a.mixedDates.map((m) => `#${m.txn}: ${m.dates.join(" / ")}`).join("; ") || "none"}).`,
+  );
+  if (a.merged.length) {
+    out.push("");
+    out.push(
+      `| Workbook # | Row date | Bank movement | Booked with it (no cash) | Sheet rows |\n| ---: | --- | --- | --- | --- |`,
+    );
+    for (const m of a.merged)
+      out.push(
+        `| ${m.txn} | ${m.date} | ${esc(m.bankVendor)} ${m.bankAmount} | ${esc(m.otherVendor)} ${m.otherAmount} — ${esc(m.otherAccounts)} | ${m.rows} |`,
+      );
+    out.push("");
+  }
+  out.push(
+    `- Payment-and-reversal entries on one bank account (stored as journal entries, net 0.00): ${a.selfCancelling.map((e) => `#${e.txn} ${e.date} ${esc(e.vendor)} ${e.amount} (rows ${e.rows})`).join("; ") || "none"}.`,
   );
   out.push(
     `- Transfers between own bank accounts: ${a.transfers.length ? a.transfers.map((t) => `#${t}`).join(", ") : "none"} (shown from 1101, decision P1-18).`,

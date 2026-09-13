@@ -15,7 +15,8 @@ export const PERSONAL_TARGET = "PERSONAL";
 export const UMBRELLA_TARGET = "UMBRELLA";
 
 const basis = z.enum(["PERCENT", "VALUE", "ACRES", "MONTHS", "COUNT"]);
-const cellRef = z.string().regex(/^[A-Z]{1,3}\d{1,5}$/, "cell address like E11");
+const CELL_RE = /^[A-Z]{1,3}\d{1,5}$/;
+const cellRef = z.string().regex(CELL_RE, "cell address like E11");
 const money = z.number();
 
 const target = z
@@ -44,6 +45,15 @@ const percentageSet = z
   })
   .passthrough();
 
+const allocation = z
+  .object({
+    label: z.string(),
+    target: z.string(),
+    amount: money,
+    cell: cellRef.nullable().optional(),
+  })
+  .passthrough();
+
 const specificBill = z
   .object({
     label: z.string().min(1),
@@ -51,24 +61,14 @@ const specificBill = z
     totalCell: cellRef.nullable().optional(),
     setKey: z.string().nullable().optional(),
     note: z.string().optional().default(""),
-    allocations: z
-      .array(
-        z.object({
-          label: z.string(),
-          target: z.string(),
-          amount: money,
-          cell: cellRef.nullable().optional(),
-        }),
-      )
-      .optional()
-      .default([]),
+    allocations: z.array(allocation).optional().default([]),
   })
   .passthrough();
 
 const reallocation = z
   .object({
     cellRange: z.string().optional().default(""),
-    columns: z.array(z.object({ label: z.string(), target: z.string() })),
+    columns: z.array(z.object({ label: z.string(), target: z.string() }).passthrough()),
     rows: z.array(
       z
         .object({
@@ -127,6 +127,7 @@ export const referenceModelFileSchema = z
         total: z.number().nullable().optional(),
         totalCell: cellRef.nullable().optional(),
       })
+      .passthrough()
       .nullable()
       .optional(),
     percentageSets: z.array(percentageSet).min(1),
@@ -190,10 +191,23 @@ export function loadReferenceModelFiles(dir = referenceModelDir()): ReferenceMod
   });
 }
 
+/** The name a percentage set gets as a model ("2024 · % (all)"); unique within the year, like the database requires. */
+export function modelNamesFor(file: ReferenceModelFile): Map<string, string> {
+  const used = new Set<string>();
+  const out = new Map<string, string>();
+  for (const set of file.percentageSets) {
+    let name = `${file.year} · ${set.label}`;
+    if (used.has(name)) name = `${name} (${set.key})`;
+    used.add(name);
+    out.set(set.key, name);
+  }
+  return out;
+}
+
 /**
- * Shares in basis points (must sum to 10,000). Each share is floored from the sheet's fraction and the
- * rounding remainder goes to the largest share (the app's default remainder rule), which is also the
- * remainder target of the version.
+ * Shares in basis points (must sum to 10,000). Each share is rounded to the nearest basis point so every
+ * target sits within half a basis point of the sheet; the residual (normally 0, at most a point or two)
+ * goes to the largest share, which is also the version's remainder target.
  */
 export function sharesToBasisPoints(shares: readonly number[]): {
   bp: number[];
@@ -203,7 +217,7 @@ export function sharesToBasisPoints(shares: readonly number[]): {
   const total = shares.reduce((a, b) => a + b, 0);
   if (Math.abs(total - 1) > 0.0005)
     throw new Error(`The shares total ${total.toFixed(6)}, not 1.000000.`);
-  const bp = shares.map((s) => Math.floor(s * 10_000 + 1e-9));
+  const bp = shares.map((s) => Math.round(s * 10_000));
   const allocated = bp.reduce((a, b) => a + b, 0);
   let remainderIndex = 0;
   shares.forEach((s, i) => {
@@ -226,89 +240,9 @@ function close(a: number, b: number, tolerance: number): boolean {
   return Math.abs(a - b) <= tolerance;
 }
 
-/**
- * Re-checks every number that carries a cell address against the workbook's cached values. Money to the
- * cent, fractions to 5 decimals (the sheet shows 6 but Excel's floats carry noise beyond that).
- */
-export function verifyReferenceModelAgainstWorkbook(
-  wb: ExcelJS.Workbook,
-  file: ReferenceModelFile,
-): { checked: number; mismatches: CellMismatch[] } {
-  const ws = requireSheet(wb, file.sheet);
-  const mismatches: CellMismatch[] = [];
-  let checked = 0;
-  const num = (
-    cell: string | null | undefined,
-    expected: number | null | undefined,
-    tolerance: number,
-    where: string,
-  ) => {
-    if (!cell || expected === null || expected === undefined) return;
-    checked++;
-    const v = cellScalar(ws.getCell(cell));
-    const found = typeof v === "number" ? v : v === null ? 0 : Number(v);
-    if (!Number.isFinite(found) || !close(found, expected, tolerance)) {
-      mismatches.push({
-        sheet: file.sheet,
-        cell,
-        expected: String(expected),
-        found: String(v),
-        where,
-      });
-    }
-  };
-  for (const p of file.properties) {
-    num(p.acresCell, p.acres, 0.0001, `property ${p.label} acres`);
-    num(p.valueCell, p.value, 0.005, `property ${p.label} value`);
-    num(p.lotsCell, p.lots, 0.0001, `property ${p.label} lots`);
-  }
-  const lv = file.landValuation;
-  if (lv) {
-    num(lv.perLotCell, lv.perLot, 0.005, "land valuation per lot");
-    num(lv.lotsCell, lv.lots, 0.0001, "land valuation lots");
-    num(lv.perAcreCell, lv.perAcre, 0.005, "land valuation per acre");
-    num(lv.acresCell, lv.acres, 0.0001, "land valuation acres");
-    num(lv.totalCell, lv.total, 0.005, "land valuation total");
-  }
-  for (const s of file.percentageSets) {
-    for (const t of s.targets) {
-      num(
-        t.weightCell,
-        t.weight,
-        s.basis === "PERCENT" ? 0.00001 : 0.005,
-        `set ${s.key} · ${t.label} weight`,
-      );
-      num(t.weight2Cell, t.weight2 ?? null, 0.0001, `set ${s.key} · ${t.label} weight2`);
-      num(t.shareCell, t.share, 0.00001, `set ${s.key} · ${t.label} share`);
-    }
-  }
-  for (const b of file.specificBills) {
-    num(b.totalCell, b.total, 0.005, `bill ${b.label} total`);
-    for (const a of b.allocations) num(a.cell, a.amount, 0.005, `bill ${b.label} → ${a.label}`);
-  }
-  const r = file.reallocationOfGeneral;
-  if (r) {
-    for (const row of r.rows) {
-      num(row.totalCell, row.total, 0.005, `reallocation ${row.accountLabel} total`);
-      const m = row.amountCells.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/);
-      if (m && m[2] === m[4]) {
-        const from = colIndex(m[1] as string);
-        const to = colIndex(m[3] as string);
-        row.amounts.forEach((amount, i) => {
-          if (amount === null || from + i > to) return;
-          num(
-            `${colName(from + i)}${m[2]}`,
-            amount,
-            0.005,
-            `reallocation ${row.accountLabel} column ${i + 1}`,
-          );
-        });
-      }
-    }
-    if (r.totals?.cell)
-      num(r.totals.cell, r.totals.grand ?? null, 0.005, "reallocation grand total");
-  }
-  return { checked, mismatches };
+/** Money to the cent, fractions to 5 decimals (the sheet shows 6 but Excel's floats carry noise beyond that). */
+function toleranceFor(expected: number): number {
+  return Math.abs(expected) >= 1 ? 0.005 : 0.00001;
 }
 
 function colIndex(name: string): number {
@@ -325,6 +259,107 @@ function colName(index: number): string {
     n = Math.floor((n - 1) / 26);
   }
   return s;
+}
+
+/**
+ * Re-checks every number that carries a cell address against the workbook's cached values — wherever it
+ * sits in the file: any key ending in "Cell" whose sibling (the key without "Cell") is a number is
+ * checked, plus the reallocation rows' amount ranges.
+ */
+export function verifyReferenceModelAgainstWorkbook(
+  wb: ExcelJS.Workbook,
+  file: ReferenceModelFile,
+): { checked: number; mismatches: CellMismatch[] } {
+  const ws = requireSheet(wb, file.sheet);
+  const mismatches: CellMismatch[] = [];
+  let checked = 0;
+  const num = (
+    cell: string | null | undefined,
+    expected: number | null | undefined,
+    where: string,
+  ) => {
+    if (!cell || expected === null || expected === undefined || !CELL_RE.test(cell)) return;
+    checked++;
+    const v = cellScalar(ws.getCell(cell));
+    const found = typeof v === "number" ? v : v === null ? 0 : Number(v);
+    if (!Number.isFinite(found) || !close(found, expected, toleranceFor(expected))) {
+      mismatches.push({
+        sheet: file.sheet,
+        cell,
+        expected: String(expected),
+        found: String(v),
+        where,
+      });
+    }
+  };
+  const walk = (node: unknown, where: string) => {
+    if (Array.isArray(node)) {
+      node.forEach((item, i) => walk(item, `${where}[${i}]`));
+      return;
+    }
+    if (!node || typeof node !== "object") return;
+    const o = node as Record<string, unknown>;
+    for (const [key, value] of Object.entries(o)) {
+      if (key.endsWith("Cell") && typeof value === "string") {
+        const sibling = o[key.slice(0, -4)];
+        if (typeof sibling === "number")
+          num(
+            value,
+            sibling,
+            `${where}.${key.slice(0, -4)}${typeof o.label === "string" ? ` (${o.label})` : ""}`,
+          );
+      } else if (value && typeof value === "object") {
+        walk(value, `${where}.${key}`);
+      }
+    }
+  };
+  walk(
+    {
+      properties: file.properties,
+      landValuation: file.landValuation,
+      percentageSets: file.percentageSets,
+      specificBills: file.specificBills,
+      reallocationOfGeneral: file.reallocationOfGeneral,
+      other: file.other,
+      extras: Object.fromEntries(
+        Object.entries(file).filter(
+          ([k]) =>
+            ![
+              "year",
+              "sheet",
+              "method",
+              "properties",
+              "landValuation",
+              "percentageSets",
+              "specificBills",
+              "reallocationOfGeneral",
+              "other",
+              "coverage",
+            ].includes(k),
+        ),
+      ),
+    },
+    String(file.year),
+  );
+  const r = file.reallocationOfGeneral;
+  if (r) {
+    for (const row of r.rows) {
+      const m = row.amountCells.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/);
+      if (m && m[2] === m[4]) {
+        const from = colIndex(m[1] as string);
+        const to = colIndex(m[3] as string);
+        row.amounts.forEach((amount, i) => {
+          if (amount === null || from + i > to) return;
+          num(
+            `${colName(from + i)}${m[2]}`,
+            amount,
+            `reallocation ${row.accountLabel} column ${i + 1}`,
+          );
+        });
+      }
+    }
+  }
+  return { checked, mismatches };
 }
 
 /** Arithmetic sanity of a set independent of the workbook: shares sum to 1 and follow the weights. */
@@ -352,6 +387,52 @@ export function checkPercentageSet(set: ReferencePercentageSet): string[] {
           `${set.key} · ${t.label}: PERCENT basis but weight ${t.weight} ≠ share ${t.share}`,
         );
     }
+  }
+  return problems;
+}
+
+/**
+ * Every specific bill that names a percentage set must be that set applied to its total: each allocation
+ * target belongs to the set, the allocations add up to the total, and each one is total × share.
+ */
+export function checkSpecificBills(file: ReferenceModelFile): string[] {
+  const problems: string[] = [];
+  const sets = new Map(file.percentageSets.map((s) => [s.key, s]));
+  for (const bill of file.specificBills) {
+    if (!bill.setKey) continue;
+    const set = sets.get(bill.setKey);
+    if (!set) {
+      problems.push(
+        `${bill.label}: names the set "${bill.setKey}", which the file does not define`,
+      );
+      continue;
+    }
+    if (bill.allocations.length === 0) {
+      problems.push(`${bill.label}: names the set "${bill.setKey}" but carries no allocations`);
+      continue;
+    }
+    const shares = new Map(set.targets.map((t) => [t.target, t.share]));
+    let sum = 0;
+    for (const a of bill.allocations) {
+      sum += a.amount;
+      const share = shares.get(a.target);
+      if (share === undefined) {
+        // A property the sheet lists with an explicit 0 (2024's H11 for 1621-1675) simply gets nothing from this set.
+        if (a.amount !== 0)
+          problems.push(
+            `${bill.label}: allocation "${a.label}" (${a.target}) is not a target of ${set.key}`,
+          );
+        continue;
+      }
+      if (!close(a.amount, bill.total * share, 0.02))
+        problems.push(
+          `${bill.label} → ${a.label}: ${a.amount} but ${bill.total} × ${share} = ${(bill.total * share).toFixed(2)}`,
+        );
+    }
+    if (!close(sum, bill.total, 0.01 * Math.max(1, bill.allocations.length)))
+      problems.push(
+        `${bill.label}: allocations add up to ${sum.toFixed(2)}, not the total ${bill.total}`,
+      );
   }
   return problems;
 }

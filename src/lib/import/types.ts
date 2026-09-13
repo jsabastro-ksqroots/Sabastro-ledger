@@ -43,6 +43,20 @@ export interface SourceLineA {
 
 export type EntryKind = "BANK" | "JOURNAL" | "ADJUSTING";
 
+/** A run of lines inside one workbook entry whose debits and credits return to zero (sheet order). */
+export interface SubGroupA {
+  firstRow: number;
+  lastRow: number;
+  dates: string[];
+  name: string | null;
+  memo: string | null;
+  touchesBank: boolean;
+  /** Σ debits of the sub-group (its "size"). */
+  totalCents: bigint;
+  /** "5204 Landscaping Expense · General" style labels of its non-bank lines (first two). */
+  accounts: string[];
+}
+
 export interface EntryA {
   txn: number;
   date: string;
@@ -59,8 +73,18 @@ export interface EntryA {
   kind: EntryKind;
   /** Every line is zero-amount: imported as a VOIDED placeholder with no lines (P0-3). */
   isVoidPlaceholder: boolean;
-  /** Lines carry more than one date (the first line's date is used). */
+  /** Lines carry more than one date (see `date` for which one the transaction takes). */
   mixedDates: boolean;
+  /** Balanced sub-groups inside the entry, in sheet order (one for an ordinary entry). */
+  subGroups: SubGroupA[];
+  /**
+   * The workbook numbers a non-cash entry and exactly one unrelated bank item as one transaction (12
+   * entries in 2024: the monthly Clubhouse rent booked as income against a distribution, followed by
+   * whatever hit the bank next). The header (vendor, memo, date) comes from the bank sub-group.
+   */
+  isMerged: boolean;
+  /** Every money line sits on the same bank account: a payment and its reversal, net 0.00 (7 entries). */
+  isSelfCancelling: boolean;
   /** Σ debit − Σ credit after normalisation (must be 0). */
   imbalanceCents: bigint;
 }

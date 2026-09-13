@@ -143,37 +143,46 @@ the `data/source` folder inside the project, with exactly these names (see `DATA
 Then, with the database running (`pnpm dev` or `pnpm dev:nodocker` in another window is fine):
 
 ```bash
-pnpm import:dry-run
+pnpm import:dry-run --user jamin@providencelegacyadvisors.com
 ```
 
 reads both files, checks every number against the acceptance list in `DATA_SOURCES.md`, rehearses the
-whole load and rolls it back. Nothing changes. When it says `SUCCEEDED` and "0 critical" failures:
+whole load and rolls it back. Nothing changes. `--user` is your own sign-in email (an Owner or
+Full-access user): the run and every imported row are recorded under that name. When it ends with
+`SUCCEEDED (dry run, rolled back)` and `Checks: 498 of 498 checks pass`:
 
 ```bash
-pnpm import:run
+pnpm import:run --user jamin@providencelegacyadvisors.com
 ```
 
 does it for real (about ten seconds) and writes `docs/IMPORT_REPORT.md`. You can run it as often as you
-like: rows that are already in the ledger are skipped, so a second run inserts nothing and only re-checks.
-The same two buttons live in **Settings → Data** in the app (Owner or Full access), together with the
-list of runs and the report.
+like: rows that are already in the ledger are skipped, so a second run adds nothing, only re-checks (a
+few seconds), and leaves the report file alone. The same two buttons live in **Settings → Data** in the
+app (Owner or Full access), together with the list of runs and every run's report.
 
 If a number does not tie, the import stops, writes nothing, and the report (and the Terminal) show the
 expected and actual values side by side. Fix the cause (usually a missing account or class in
-Settings) and run again. `pnpm import:run --user you@example.com` records the run under a specific user;
-`--source-dir /some/folder` reads the workbooks from elsewhere (or set `IMPORT_SOURCE_DIR` in `.env`).
+Settings) and run again. `--source-dir /some/folder` reads the workbooks from elsewhere (or set
+`IMPORT_SOURCE_DIR` in `.env`; both the Terminal and the app honour it). New rows are never written into a
+closed or filed year other than the 2019–2024 history: the run stops and says so; `--allow-filed` lets it
+through after Jose agrees.
+
+Development only: `pnpm import:reset-dev` removes everything the import wrote from a **local** database
+(it refuses any other) so the import can run again from scratch, for instance after the importer changed.
+Users, the chart, classes, tax years, hand-entered rows and the audit log are kept.
 
 ## 9. Useful commands
 
-| Command                        | What it does                                                                                 |
-| ------------------------------ | -------------------------------------------------------------------------------------------- |
-| `make`                         | lists these shortcuts                                                                        |
-| `pnpm db:seed`                 | re-runs the seed; safe to repeat, never overwrites edits                                     |
-| `pnpm db:studio`               | opens Prisma Studio, a table viewer for the database                                         |
-| `pnpm db:recreate`             | **wipes the local database** and rebuilds it (development only; refuses non-local databases) |
-| `pnpm import:dry-run`          | reads the two source workbooks, checks every number, rehearses the load, changes nothing     |
-| `pnpm import:run`              | imports the historical books (safe to repeat; writes `docs/IMPORT_REPORT.md`)                |
-| `pnpm lint` / `pnpm typecheck` | code checks Claude Code runs before every commit                                             |
+| Command                        | What it does                                                                                         |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `make`                         | lists these shortcuts                                                                                |
+| `pnpm db:seed`                 | re-runs the seed; safe to repeat, never overwrites edits                                             |
+| `pnpm db:studio`               | opens Prisma Studio, a table viewer for the database                                                 |
+| `pnpm db:recreate`             | **wipes the local database** and rebuilds it (development only; refuses non-local databases)         |
+| `pnpm import:dry-run --user …` | reads the two source workbooks, checks every number, rehearses the load, changes nothing             |
+| `pnpm import:run --user …`     | imports the historical books (safe to repeat; writes `docs/IMPORT_REPORT.md` when something changed) |
+| `pnpm import:reset-dev`        | **development only**: removes what the import wrote from a local database so it can run again        |
+| `pnpm lint` / `pnpm typecheck` | code checks Claude Code runs before every commit                                                     |
 
 ## 10. If something goes wrong
 

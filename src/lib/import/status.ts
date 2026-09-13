@@ -1,15 +1,14 @@
 import { existsSync, statSync } from "node:fs";
-import path from "node:path";
 import type { DbOrTx } from "@/lib/db";
 import { sha256File } from "./xlsx";
-import { sourcePaths } from "./run";
-import { SOURCE_A, SOURCE_B } from "./types";
+import { importSourceDir, sourcePaths } from "./paths";
+import { STALE_RUN_MS } from "./run";
+import type { ImportSummary } from "./report";
+import { SOURCE_A, SOURCE_B, type Check } from "./types";
 
 /** What Settings → Data shows: the source files on disk, what is in the ledger, and the runs so far. */
 
-export function importSourceDir(): string {
-  return process.env.IMPORT_SOURCE_DIR || path.join(process.cwd(), "data", "source");
-}
+export { importSourceDir };
 
 export interface SourceStatus {
   key: "A" | "B";
@@ -19,6 +18,10 @@ export interface SourceStatus {
   bytes: number | null;
   modifiedAt: string | null;
   sha256: string | null;
+  /** The file's hash when it was last imported for real, and when. */
+  importedSha256: string | null;
+  importedAt: string | null;
+  changedSinceImport: boolean;
   transactions: { posted: number; flagged: number; voided: number; draft: number };
   firstDate: string | null;
   lastDate: string | null;
@@ -29,7 +32,19 @@ const LABELS: Record<string, string> = {
   [SOURCE_B]: "2025 ledger snapshot (SREI + PLA), final review copy of 2026-09-10",
 };
 
+type StoredSource = { key: string; file: string; sha256: string; bytes: number };
+
 export async function sourceStatuses(tx: DbOrTx, dir = importSourceDir()): Promise<SourceStatus[]> {
+  const lastReal = await tx.importRun.findFirst({
+    where: { status: "SUCCEEDED", dryRun: false },
+    orderBy: { startedAt: "desc" },
+    select: { startedAt: true, sources: true },
+  });
+  const imported = new Map<string, { sha256: string; at: string }>();
+  if (lastReal && Array.isArray(lastReal.sources)) {
+    for (const src of lastReal.sources as StoredSource[])
+      imported.set(src.file, { sha256: src.sha256, at: lastReal.startedAt.toISOString() });
+  }
   const out: SourceStatus[] = [];
   for (const p of sourcePaths(dir)) {
     const present = existsSync(p.path);
@@ -45,6 +60,8 @@ export async function sourceStatuses(tx: DbOrTx, dir = importSourceDir()): Promi
       _max: { date: true },
     });
     const n = (s: string) => counts.find((c) => c.status === s)?._count._all ?? 0;
+    const sha256 = present ? await sha256File(p.path) : null;
+    const imp = imported.get(p.file);
     out.push({
       key: p.key,
       file: p.file,
@@ -52,7 +69,10 @@ export async function sourceStatuses(tx: DbOrTx, dir = importSourceDir()): Promi
       present,
       bytes: st?.size ?? null,
       modifiedAt: st ? st.mtime.toISOString() : null,
-      sha256: present ? await sha256File(p.path) : null,
+      sha256,
+      importedSha256: imp?.sha256 ?? null,
+      importedAt: imp?.at ?? null,
+      changedSinceImport: !!(present && imp && sha256 !== imp.sha256),
       transactions: {
         posted: n("POSTED"),
         flagged: n("FLAGGED"),
@@ -66,18 +86,47 @@ export async function sourceStatuses(tx: DbOrTx, dir = importSourceDir()): Promi
   return out;
 }
 
+export interface ChecksSummary {
+  total: number;
+  failed: number;
+  failedCritical: number;
+}
+
+/** One way of counting for every screen: total, failed (any), failed critical. */
+export function checksSummary(summary: Pick<ImportSummary, "checks"> | null): ChecksSummary | null {
+  if (!summary?.checks) return null;
+  const all: Check[] = Object.values(summary.checks).flat();
+  return {
+    total: all.length,
+    failed: all.filter((c) => !c.ok).length,
+    failedCritical: all.filter((c) => !c.ok && c.critical).length,
+  };
+}
+
+/** The sentence the buttons and the runs table share. */
+export function checksSentence(c: ChecksSummary): string {
+  const pass = `${(c.total - c.failed).toLocaleString("en-US")} of ${c.total.toLocaleString("en-US")} checks pass`;
+  if (c.failed === 0) return pass;
+  const notes = c.failed - c.failedCritical;
+  if (c.failedCritical === 0)
+    return `${pass} (${notes} informational note${notes === 1 ? "" : "s"}, see the report)`;
+  return `${pass} (${c.failedCritical} critical difference${c.failedCritical === 1 ? "" : "s"}, see the report)`;
+}
+
 export interface ImportRunRow {
   id: string;
   startedAt: string;
   finishedAt: string | null;
   status: string;
+  /** A "running" row older than an hour: the app stopped before finishing it. */
+  isStale: boolean;
   dryRun: boolean;
   trigger: string;
   runBy: string | null;
   allChecksPassed: boolean | null;
   inserted: { a: number; b: number; models: number } | null;
   skipped: { a: number; b: number; models: number } | null;
-  checks: { total: number; failed: number } | null;
+  checks: ChecksSummary | null;
   error: string | null;
   hasReport: boolean;
 }
@@ -92,21 +141,15 @@ export async function listImportRuns(tx: DbOrTx, limit = 30): Promise<ImportRunR
       })
     : [];
   const names = new Map(users.map((u) => [u.id, u.displayName]));
+  const now = Date.now();
   return runs.map((r) => {
-    const s = (r.summary ?? null) as null | {
-      load?: {
-        a?: { inserted: number; existing: number };
-        b?: { inserted: number; existing: number };
-        models?: { inserted: number; existing: number };
-      };
-      checks?: Record<string, { ok: boolean }[]>;
-    };
-    const allChecks = s?.checks ? Object.values(s.checks).flat() : null;
+    const s = (r.summary ?? null) as null | Pick<ImportSummary, "checks" | "load">;
     return {
       id: r.id,
       startedAt: r.startedAt.toISOString(),
       finishedAt: r.finishedAt ? r.finishedAt.toISOString() : null,
       status: r.status,
+      isStale: r.status === "RUNNING" && now - r.startedAt.getTime() > STALE_RUN_MS,
       dryRun: r.dryRun,
       trigger: r.trigger,
       runBy: r.runById ? (names.get(r.runById) ?? null) : null,
@@ -125,15 +168,16 @@ export async function listImportRuns(tx: DbOrTx, limit = 30): Promise<ImportRunR
             models: s.load.models?.existing ?? 0,
           }
         : null,
-      checks: allChecks
-        ? { total: allChecks.length, failed: allChecks.filter((c) => !c.ok).length }
-        : null,
+      checks: checksSummary(s),
       error: r.error,
       hasReport: !!r.reportMarkdown,
     };
   });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The report of one run (?run=<id>), or of the newest real run, or of the newest run with a report. A bad id is simply "not found". */
 export async function importRunReport(
   tx: DbOrTx,
   id: string | null,
@@ -143,13 +187,22 @@ export async function importRunReport(
   markdown: string;
   dryRun: boolean;
   status: string;
+  isLatestReal: boolean;
 } | null> {
+  if (id !== null && !UUID_RE.test(id)) return null;
+  const latestReal = await tx.importRun.findFirst({
+    where: { reportMarkdown: { not: null }, dryRun: false, status: "SUCCEEDED" },
+    orderBy: { startedAt: "desc" },
+    select: { id: true },
+  });
   const run = id
     ? await tx.importRun.findUnique({ where: { id } })
-    : await tx.importRun.findFirst({
-        where: { reportMarkdown: { not: null } },
-        orderBy: { startedAt: "desc" },
-      });
+    : latestReal
+      ? await tx.importRun.findUnique({ where: { id: latestReal.id } })
+      : await tx.importRun.findFirst({
+          where: { reportMarkdown: { not: null } },
+          orderBy: { startedAt: "desc" },
+        });
   if (!run || !run.reportMarkdown) return null;
   return {
     id: run.id,
@@ -157,6 +210,7 @@ export async function importRunReport(
     markdown: run.reportMarkdown,
     dryRun: run.dryRun,
     status: run.status,
+    isLatestReal: latestReal?.id === run.id,
   };
 }
 

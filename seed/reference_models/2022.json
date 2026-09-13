@@ -393,6 +393,589 @@
   ],
   "specificBills": [
     {
+      "label": "Township tax on the 1625 parcel (regular + interim), business share",
+      "total": 1665.408544,
+      "totalCell": null,
+      "totalFrom": "H56+H57",
+      "setKey": "pct_no_shed_house",
+      "note": "H56 + H57: the 13 Chisel Creek township tax (1,856.99 interim + 525.34 regular) × the 69.9067 % business share, then split between The Land and The Clubhouse with the no-Shed / no-house set (row 66). The other properties' township taxes are their own (row 66 C:G) and are not allocated.",
+      "allocations": [
+        {
+          "label": "The Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 1336.819543,
+          "cell": "H66"
+        },
+        {
+          "label": "The Clubhouse",
+          "target": "Rentals:The Clubhouse",
+          "amount": 328.589001,
+          "cell": "I66"
+        }
+      ]
+    },
+    {
+      "label": "Chester County tax on the 1625 parcel (regular + interim), business share",
+      "total": 3036.929275,
+      "totalCell": null,
+      "totalFrom": "H58+H59",
+      "setKey": "pct_no_shed_house",
+      "note": "H58 + H59, split between The Land and The Clubhouse (row 67).",
+      "allocations": [
+        {
+          "label": "The Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 2437.736026,
+          "cell": "H67"
+        },
+        {
+          "label": "The Clubhouse",
+          "target": "Rentals:The Clubhouse",
+          "amount": 599.193249,
+          "cell": "I67"
+        }
+      ]
+    },
+    {
+      "label": "Avon Grove School tax on the 1625 parcel (regular + interim), business share",
+      "total": 31350.251676,
+      "totalCell": null,
+      "totalFrom": "H60+H61",
+      "setKey": "pct_no_shed_house",
+      "note": "H60 + H61, split between The Land and The Clubhouse (row 68).",
+      "allocations": [
+        {
+          "label": "The Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 25164.773694,
+          "cell": "H68"
+        },
+        {
+          "label": "The Clubhouse",
+          "target": "Rentals:The Clubhouse",
+          "amount": 6185.477982,
+          "cell": "I68"
+        }
+      ]
+    },
+    {
+      "label": "13 Chisel Creek insurance, business share",
+      "total": 1041.665916,
+      "totalCell": null,
+      "totalFrom": "H62",
+      "setKey": "pct_no_house",
+      "note": "H62: the parcel's insurance (1,490.08) × the 69.9067 % business share, split among the Shed, the Land and the Clubhouse with the no-house set (row 69).",
+      "allocations": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "amount": 101.211224,
+          "cell": "G69"
+        },
+        {
+          "label": "The Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 754.900782,
+          "cell": "H69"
+        },
+        {
+          "label": "The Clubhouse",
+          "target": "Rentals:The Clubhouse",
+          "amount": 185.55391,
+          "cell": "I69"
+        }
+      ]
+    },
+    {
+      "label": "Umbrella insurance",
+      "total": 1015.22,
+      "totalCell": null,
+      "totalFrom": "I43",
+      "setKey": "pct_all_months",
+      "note": "J43 / I70: the umbrella premium spread across all seven properties by market value × months in service (row 70).",
+      "allocations": [
+        {
+          "label": "533 Mystic",
+          "target": "Rentals:533 Mystic Lane",
+          "amount": 46.995246,
+          "cell": "C70"
+        },
+        {
+          "label": "176 Tulsk",
+          "target": "Rentals:176 Tulsk Road",
+          "amount": 78.358389,
+          "cell": "D70"
+        },
+        {
+          "label": "142 Maloney",
+          "target": "Rentals:142 Maloney Terrace",
+          "amount": 78.358389,
+          "cell": "E70"
+        },
+        {
+          "label": "544 Liberty",
+          "target": "Rentals:544 Liberty Circle",
+          "amount": 78.358389,
+          "cell": "F70"
+        },
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "amount": 71.234899,
+          "cell": "G70"
+        },
+        {
+          "label": "The Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 531.31737,
+          "cell": "H70"
+        },
+        {
+          "label": "The Clubhouse",
+          "target": "Rentals:The Clubhouse",
+          "amount": 130.597316,
+          "cell": "I70"
+        }
+      ]
+    }
+  ],
+  "specificBillsTables": {
+    "title": "Final Tax and Insurance Allocation Calculations",
+    "titleCell": "B34",
+    "tables": [
+      {
+        "name": "Bills Paid in 2022",
+        "headerCells": "B36:J36",
+        "headers": [
+          "Bills Paid in 2022",
+          "533 Mystic",
+          "176 tulsk",
+          "142 Maloney",
+          "544 Liberty",
+          "The Shed",
+          "13 Chisel Creek",
+          "Umbrella",
+          "Total"
+        ],
+        "totalsRow": {
+          "label": "Total",
+          "cellRange": "C44:J44",
+          "amounts": [8008.84, 6164.27, 5910.95, 6276.52, 2878.01, 53062.51, 1015.22, 83316.32]
+        }
+      },
+      {
+        "name": "% that is business expense",
+        "headerCells": "B46:I46",
+        "headers": [
+          "% that is business expense",
+          "533 Mystic",
+          "176 tulsk",
+          "142 Maloney",
+          "544 Liberty",
+          "The Shed",
+          "13 Chisel Creek",
+          "Umbrella"
+        ]
+      },
+      {
+        "name": "$ that is business expense",
+        "headerCells": "B55:J55",
+        "headers": [
+          "$ that is business expense",
+          "533 Mystic",
+          "176 tulsk",
+          "142 Maloney",
+          "544 Liberty",
+          "The Shed",
+          "13 Chisel Creek",
+          "Umbrella",
+          "Total"
+        ],
+        "totalsRow": {
+          "label": "Total",
+          "cellRange": "C63:J63",
+          "amounts": [3444.9, 6164.27, 5910.95, 6276.52, 2878.01, 37094.26, 1015.22, 62784.12]
+        }
+      },
+      {
+        "name": "final allocation",
+        "headerCells": "B65:J65",
+        "headers": [
+          "final allocation",
+          "533 Mystic",
+          "176 tulsk",
+          "142 Maloney",
+          "544 Liberty",
+          "The Shed",
+          "The Land",
+          "The Clubhouse",
+          "Total"
+        ],
+        "totalsRow": {
+          "label": "Total",
+          "cellRange": "C71:J71",
+          "amounts": [3491.89, 6242.63, 5989.31, 6354.88, 3050.46, 30225.55, 7429.41, 62784.12]
+        }
+      }
+    ],
+    "totalBillsPaid": 83316.32,
+    "totalBillsPaidCell": "J44",
+    "totalBusiness": 62784.12,
+    "totalBusinessCell": "J63",
+    "totalFinal": 62784.12,
+    "totalFinalCell": "J71",
+    "note": "Column headers of the three bill tables (rows 36, 46, 55) name the properties as paid; the final table (row 65) replaces the '13 Chisel Creek' and 'Umbrella' columns with 'The Land' and 'The Clubhouse'. The personal (Our House) share of the 1625 parcel bills, 83,316.32 - 62,784.12 = 20,532.20 plus the non-rented part of 533 Mystic, is Jose's personal expense."
+  },
+  "reallocationOfGeneral": {
+    "title": "Final Shared Expenses Allocation Calculations",
+    "titleCell": "B73",
+    "cellRange": "B73:J91",
+    "columns": [
+      {
+        "label": "Land Development:Chisel Creek",
+        "target": "Land Development:13 Chisel Creek Dr",
+        "column": "D"
+      },
+      {
+        "label": "Rentals:142 Maloney Terrace",
+        "target": "Rentals:142 Maloney Terrace",
+        "column": "E"
+      },
+      {
+        "label": "Rentals:The Clubhouse",
+        "target": "Rentals:The Clubhouse",
+        "column": "F"
+      },
+      {
+        "label": "Rentals:The Shed",
+        "target": "Rentals:The Shed",
+        "column": "G"
+      },
+      {
+        "label": "Rentals:176 Tulsk Road",
+        "target": "Rentals:176 Tulsk Road",
+        "column": "H"
+      },
+      {
+        "label": "Rentals:544 Liberty Circle",
+        "target": "Rentals:544 Liberty Circle",
+        "column": "I"
+      },
+      {
+        "label": "Rentals:533 Mystic Lane",
+        "target": "Rentals:533 Mystic Lane",
+        "column": "J"
+      }
+    ],
+    "columnLabelCells": "D77:J77",
+    "sets": [
+      {
+        "label": "Just Chisel Creek",
+        "setKey": "pct_no_house",
+        "cellRange": "D75:J75",
+        "shares": [0.724705, 0.0, 0.178132, 0.097163, 0.0, 0.0, 0.0],
+        "note": "Same three shares as G18:G20 (recomputed from row 76: D76/(D76+F76+G76) etc.), laid over the seven columns with zeros elsewhere."
+      },
+      {
+        "label": "All",
+        "setKey": "pct_all_months",
+        "cellRange": "D76:J76",
+        "shares": [0.523352, 0.077184, 0.128639, 0.070167, 0.077184, 0.077184, 0.046291],
+        "note": "The market-value x months shares E25:E31 re-ordered to the column order of row 77."
+      }
+    ],
+    "rows": [
+      {
+        "account": "5204",
+        "accountLabel": "5204 Landscaping Expense",
+        "labelCell": "B78",
+        "total": 17376.46,
+        "totalCell": "C78",
+        "setKey": "pct_no_house",
+        "amounts": [12592.81, 0.0, 3095.3, 1688.35, 0.0, 0.0, 0.0],
+        "amountCells": "D78:J78",
+        "remainderColumn": "Rentals:The Shed (G)"
+      },
+      {
+        "account": "5205",
+        "accountLabel": "5205 Utilities Expense",
+        "labelCell": "B79",
+        "total": 1743.09,
+        "totalCell": "C79",
+        "setKey": "pct_no_house",
+        "amounts": [1263.23, 0.0, 310.5, 169.36, 0.0, 0.0, 0.0],
+        "amountCells": "D79:J79",
+        "remainderColumn": "Rentals:The Shed (G)"
+      },
+      {
+        "account": "5206",
+        "accountLabel": "5206 Repairs and Maintenance Expense",
+        "labelCell": "B80",
+        "total": 10911.97,
+        "totalCell": "C80",
+        "setKey": "pct_no_house",
+        "amounts": [7907.96, 0.0, 1943.77, 1060.24, 0.0, 0.0, 0.0],
+        "amountCells": "D80:J80",
+        "remainderColumn": "Rentals:The Shed (G)"
+      },
+      {
+        "account": "5207",
+        "accountLabel": "5207 Trash Expense",
+        "labelCell": "B81",
+        "total": 721.26,
+        "totalCell": "C81",
+        "setKey": "pct_no_house",
+        "amounts": [522.7, 0.0, 128.48, 70.08, 0.0, 0.0, 0.0],
+        "amountCells": "D81:J81",
+        "remainderColumn": "Rentals:The Shed (G)"
+      },
+      {
+        "account": "5208",
+        "accountLabel": "5208 Snow Removal Expense",
+        "labelCell": "B82",
+        "total": 140.0,
+        "totalCell": "C82",
+        "setKey": "pct_no_house",
+        "amounts": [101.46, 0.0, 24.94, 13.6, 0.0, 0.0, 0.0],
+        "amountCells": "D82:J82",
+        "remainderColumn": "Rentals:The Shed (G)"
+      },
+      {
+        "account": "5209",
+        "accountLabel": "5209 Cleaning Expense",
+        "labelCell": "B83",
+        "total": 91.75,
+        "totalCell": "C83",
+        "setKey": "pct_no_house",
+        "amounts": [66.49, 0.0, 16.34, 8.92, 0.0, 0.0, 0.0],
+        "amountCells": "D83:J83",
+        "remainderColumn": "Rentals:The Shed (G)"
+      },
+      {
+        "account": "5211",
+        "accountLabel": "5211 Professional Fees Expense",
+        "labelCell": "B84",
+        "total": 1188.5,
+        "totalCell": "C84",
+        "setKey": "pct_all_months",
+        "amounts": [622.0, 91.73, 152.89, 83.39, 91.73, 91.73, 55.03],
+        "amountCells": "D84:J84",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      },
+      {
+        "account": "5212",
+        "accountLabel": "5212 Bank Fees Expense",
+        "labelCell": "B85",
+        "total": -3.0,
+        "totalCell": "C85",
+        "setKey": "pct_all_months",
+        "amounts": [-1.57, -0.23, -0.39, -0.21, -0.23, -0.23, -0.14],
+        "amountCells": "D85:J85",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      },
+      {
+        "account": "5213",
+        "accountLabel": "5213 Postage & Delivery Expense",
+        "labelCell": "B86",
+        "total": 89.36,
+        "totalCell": "C86",
+        "setKey": "pct_all_months",
+        "amounts": [46.77, 6.9, 11.5, 6.27, 6.9, 6.9, 4.12],
+        "amountCells": "D86:J86",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      },
+      {
+        "account": "5214",
+        "accountLabel": "5214 Software Expense",
+        "labelCell": "B87",
+        "total": 697.99,
+        "totalCell": "C87",
+        "setKey": "pct_all_months",
+        "amounts": [365.29, 53.87, 89.79, 48.98, 53.87, 53.87, 32.32],
+        "amountCells": "D87:J87",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      },
+      {
+        "account": "5215",
+        "accountLabel": "5215 Supplies Expense",
+        "labelCell": "B88",
+        "total": 807.47,
+        "totalCell": "C88",
+        "setKey": "pct_all_months",
+        "amounts": [422.59, 62.32, 103.87, 56.66, 62.32, 62.32, 37.39],
+        "amountCells": "D88:J88",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      },
+      {
+        "account": "5216",
+        "accountLabel": "5216 Travel Expense",
+        "labelCell": "B89",
+        "total": 2294.89,
+        "totalCell": "C89",
+        "setKey": "pct_all_months",
+        "amounts": [1201.04, 177.13, 295.21, 161.03, 177.13, 177.13, 106.22],
+        "amountCells": "D89:J89",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      },
+      {
+        "account": "5217",
+        "accountLabel": "5217 Meals and Entertainment Expense",
+        "labelCell": "B90",
+        "total": 2147.62,
+        "totalCell": "C90",
+        "setKey": "pct_all_months",
+        "amounts": [1123.96, 165.76, 276.27, 150.69, 165.76, 165.76, 99.42],
+        "amountCells": "D90:J90",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      },
+      {
+        "account": "5224",
+        "accountLabel": "5224 Donations Expense",
+        "labelCell": "B91",
+        "total": 1650.0,
+        "totalCell": "C91",
+        "setKey": "pct_all_months",
+        "amounts": [863.53, 127.35, 212.26, 115.78, 127.35, 127.35, 76.38],
+        "amountCells": "D91:J91",
+        "remainderColumn": "Rentals:533 Mystic Lane (J)"
+      }
+    ],
+    "totals": {
+      "byColumn": null,
+      "grand": null,
+      "cell": null,
+      "note": "The sheet has no totals row for this block; column K holds 17 ERROR-check formulas (K75:K91) that all evaluate to empty."
+    },
+    "note": "For each expense account, the year's General-class total (column C) is spread across the properties. Property-type costs 5204-5209 (landscaping, utilities, repairs, trash, snow, cleaning) use 'Just Chisel Creek' (Land / Clubhouse / Shed); each cell is ROUND(total x share, 2) and the rounding remainder goes to The Shed (G = C - D - F). Overhead accounts 5211-5224 use 'All' (value x months across all seven properties); remainder to 533 Mystic (J = C - sum of D:I). Bank fees 5212 are a -3.00 credit and are spread the same way."
+  },
+  "other": [
+    {
+      "title": "Tax Assessment",
+      "cellRange": "B2:H9",
+      "summary": "Tax assessment math for the 1625 parcel in 2022: common level ratio 0.395 (C4) and tax rate 0.0341 (C5); the assessment of land 69,130 plus buildings 141,000 (Original) rose by 758,860 in buildings (Change) to 968,990 (New). Total market value = assessment / 0.395 and total tax = assessment x 0.0341 (Original 7,165.43 -> New 33,042.56). Informational; not used by the allocations below.",
+      "data": [
+        ["Common Level Ratio", 0.395],
+        ["Tax Rate", 0.0341],
+        ["2022 Assessment", "Original", "Change", "New"],
+        ["Land", 69130.0, 0.0, 69130.0],
+        ["Buildings", 141000.0, 758860.0, 899860.0],
+        ["Total Assessment", 210130.0, null, 968990.0],
+        ["Total MV", 531974.68, null, 2453139.24],
+        ["Total Tax", 7165.433, null, 33042.559]
+      ],
+      "cells": [
+        "B2",
+        "B4",
+        "C4",
+        "B5",
+        "C5",
+        "E4",
+        "F4",
+        "G4",
+        "H4",
+        "E5",
+        "F5",
+        "G5",
+        "H5",
+        "E6",
+        "F6",
+        "G6",
+        "H6",
+        "E7",
+        "F7",
+        "H7",
+        "E8",
+        "F8",
+        "H8",
+        "E9",
+        "F9",
+        "H9"
+      ]
+    },
+    {
+      "title": "Allocation Percentage Calculations",
+      "cellRange": "B11",
+      "summary": "Section title for the land valuation and percentage tables (rows 13-32).",
+      "data": [["Allocation Percentage Calculations"]]
+    },
+    {
+      "title": "Acres / value table header and totals",
+      "cellRange": "B17:H17, B22:D22",
+      "summary": "Header row of the property table (Acres, Property, Total Value and the four percentage sets) and its totals: 110 acres in all (B22, an input; The Land's 72.8 acres is the remainder) and 4,287,600 total value (D22).",
+      "data": [
+        [
+          "Acres",
+          "Property",
+          "Total Value",
+          "% (all)",
+          "% (no Shed)",
+          "% (no house)",
+          "% (no shed/house)"
+        ],
+        [110.0, null, 4287600.0]
+      ]
+    },
+    {
+      "title": "533 Mystic rented period (Bolmer tenancy)",
+      "cellRange": "G24:H27",
+      "summary": "533 Mystic was rented to the Bolmers from 2022-02-25 to 2022-07-31: 157 days (H26 = end - start + 1), i.e. 43.0137% of the year (H27 = 157/365). This single fraction is the business share of every 533 Mystic bill (C47, C49, C51, C53); the rest is not a business expense.",
+      "data": [
+        ["Bolmer Start Date", "2022-02-25"],
+        ["Bolmer End Date", "2022-07-31"],
+        ["Days", 157.0],
+        ["% of year", 0.430137]
+      ]
+    },
+    {
+      "title": "Bill table titles, headers and totals rows",
+      "cellRange": "B34:J36, B44:J44, B46:I46, B55:J55, B63:J63, B65:J65, B71:J71",
+      "summary": "The section title, the four table header rows and the three totals rows of the tax-and-insurance block; the detail is in specificBills and the totals in specificBillsTables.",
+      "data": [
+        [
+          "Bills Paid in 2022",
+          8008.84,
+          6164.27,
+          5910.95,
+          6276.52,
+          2878.01,
+          53062.51,
+          1015.22,
+          83316.32
+        ],
+        ["% that is business expense"],
+        [
+          "$ that is business expense",
+          3444.9,
+          6164.27,
+          5910.95,
+          6276.52,
+          2878.01,
+          37094.26,
+          1015.22,
+          62784.12
+        ],
+        [
+          "final allocation",
+          3491.89,
+          6242.63,
+          5989.31,
+          6354.88,
+          3050.46,
+          30225.55,
+          7429.41,
+          62784.12
+        ]
+      ]
+    }
+  ],
+  "coverage": {
+    "nonEmptyCells": 560,
+    "accountedFor": 560,
+    "unaccounted": [],
+    "note": "Counted from the cached-value view of the sheet. The 17 check formulas in K75:K91 (=IF(SUM(..)<>total,\"ERROR\",\"\")) all evaluate to an empty string and so are not non-empty cells."
+  },
+  "billsPaidByProperty": [
+    {
       "label": "Township Tax",
       "total": 1791.9,
       "totalCell": "J37",
@@ -1629,439 +2212,5 @@
       "allocationTotalCell": "J70"
     }
   ],
-  "specificBillsTables": {
-    "title": "Final Tax and Insurance Allocation Calculations",
-    "titleCell": "B34",
-    "tables": [
-      {
-        "name": "Bills Paid in 2022",
-        "headerCells": "B36:J36",
-        "headers": [
-          "Bills Paid in 2022",
-          "533 Mystic",
-          "176 tulsk",
-          "142 Maloney",
-          "544 Liberty",
-          "The Shed",
-          "13 Chisel Creek",
-          "Umbrella",
-          "Total"
-        ],
-        "totalsRow": {
-          "label": "Total",
-          "cellRange": "C44:J44",
-          "amounts": [8008.84, 6164.27, 5910.95, 6276.52, 2878.01, 53062.51, 1015.22, 83316.32]
-        }
-      },
-      {
-        "name": "% that is business expense",
-        "headerCells": "B46:I46",
-        "headers": [
-          "% that is business expense",
-          "533 Mystic",
-          "176 tulsk",
-          "142 Maloney",
-          "544 Liberty",
-          "The Shed",
-          "13 Chisel Creek",
-          "Umbrella"
-        ]
-      },
-      {
-        "name": "$ that is business expense",
-        "headerCells": "B55:J55",
-        "headers": [
-          "$ that is business expense",
-          "533 Mystic",
-          "176 tulsk",
-          "142 Maloney",
-          "544 Liberty",
-          "The Shed",
-          "13 Chisel Creek",
-          "Umbrella",
-          "Total"
-        ],
-        "totalsRow": {
-          "label": "Total",
-          "cellRange": "C63:J63",
-          "amounts": [3444.9, 6164.27, 5910.95, 6276.52, 2878.01, 37094.26, 1015.22, 62784.12]
-        }
-      },
-      {
-        "name": "final allocation",
-        "headerCells": "B65:J65",
-        "headers": [
-          "final allocation",
-          "533 Mystic",
-          "176 tulsk",
-          "142 Maloney",
-          "544 Liberty",
-          "The Shed",
-          "The Land",
-          "The Clubhouse",
-          "Total"
-        ],
-        "totalsRow": {
-          "label": "Total",
-          "cellRange": "C71:J71",
-          "amounts": [3491.89, 6242.63, 5989.31, 6354.88, 3050.46, 30225.55, 7429.41, 62784.12]
-        }
-      }
-    ],
-    "totalBillsPaid": 83316.32,
-    "totalBillsPaidCell": "J44",
-    "totalBusiness": 62784.12,
-    "totalBusinessCell": "J63",
-    "totalFinal": 62784.12,
-    "totalFinalCell": "J71",
-    "note": "Column headers of the three bill tables (rows 36, 46, 55) name the properties as paid; the final table (row 65) replaces the '13 Chisel Creek' and 'Umbrella' columns with 'The Land' and 'The Clubhouse'. The personal (Our House) share of the 1625 parcel bills, 83,316.32 - 62,784.12 = 20,532.20 plus the non-rented part of 533 Mystic, is Jose's personal expense."
-  },
-  "reallocationOfGeneral": {
-    "title": "Final Shared Expenses Allocation Calculations",
-    "titleCell": "B73",
-    "cellRange": "B73:J91",
-    "columns": [
-      {
-        "label": "Land Development:Chisel Creek",
-        "target": "Land Development:13 Chisel Creek Dr",
-        "column": "D"
-      },
-      {
-        "label": "Rentals:142 Maloney Terrace",
-        "target": "Rentals:142 Maloney Terrace",
-        "column": "E"
-      },
-      {
-        "label": "Rentals:The Clubhouse",
-        "target": "Rentals:The Clubhouse",
-        "column": "F"
-      },
-      {
-        "label": "Rentals:The Shed",
-        "target": "Rentals:The Shed",
-        "column": "G"
-      },
-      {
-        "label": "Rentals:176 Tulsk Road",
-        "target": "Rentals:176 Tulsk Road",
-        "column": "H"
-      },
-      {
-        "label": "Rentals:544 Liberty Circle",
-        "target": "Rentals:544 Liberty Circle",
-        "column": "I"
-      },
-      {
-        "label": "Rentals:533 Mystic Lane",
-        "target": "Rentals:533 Mystic Lane",
-        "column": "J"
-      }
-    ],
-    "columnLabelCells": "D77:J77",
-    "sets": [
-      {
-        "label": "Just Chisel Creek",
-        "setKey": "pct_no_house",
-        "cellRange": "D75:J75",
-        "shares": [0.724705, 0.0, 0.178132, 0.097163, 0.0, 0.0, 0.0],
-        "note": "Same three shares as G18:G20 (recomputed from row 76: D76/(D76+F76+G76) etc.), laid over the seven columns with zeros elsewhere."
-      },
-      {
-        "label": "All",
-        "setKey": "pct_all_months",
-        "cellRange": "D76:J76",
-        "shares": [0.523352, 0.077184, 0.128639, 0.070167, 0.077184, 0.077184, 0.046291],
-        "note": "The market-value x months shares E25:E31 re-ordered to the column order of row 77."
-      }
-    ],
-    "rows": [
-      {
-        "account": "5204",
-        "accountLabel": "5204 Landscaping Expense",
-        "labelCell": "B78",
-        "total": 17376.46,
-        "totalCell": "C78",
-        "setKey": "pct_no_house",
-        "amounts": [12592.81, 0.0, 3095.3, 1688.35, 0.0, 0.0, 0.0],
-        "amountCells": "D78:J78",
-        "remainderColumn": "Rentals:The Shed (G)"
-      },
-      {
-        "account": "5205",
-        "accountLabel": "5205 Utilities Expense",
-        "labelCell": "B79",
-        "total": 1743.09,
-        "totalCell": "C79",
-        "setKey": "pct_no_house",
-        "amounts": [1263.23, 0.0, 310.5, 169.36, 0.0, 0.0, 0.0],
-        "amountCells": "D79:J79",
-        "remainderColumn": "Rentals:The Shed (G)"
-      },
-      {
-        "account": "5206",
-        "accountLabel": "5206 Repairs and Maintenance Expense",
-        "labelCell": "B80",
-        "total": 10911.97,
-        "totalCell": "C80",
-        "setKey": "pct_no_house",
-        "amounts": [7907.96, 0.0, 1943.77, 1060.24, 0.0, 0.0, 0.0],
-        "amountCells": "D80:J80",
-        "remainderColumn": "Rentals:The Shed (G)"
-      },
-      {
-        "account": "5207",
-        "accountLabel": "5207 Trash Expense",
-        "labelCell": "B81",
-        "total": 721.26,
-        "totalCell": "C81",
-        "setKey": "pct_no_house",
-        "amounts": [522.7, 0.0, 128.48, 70.08, 0.0, 0.0, 0.0],
-        "amountCells": "D81:J81",
-        "remainderColumn": "Rentals:The Shed (G)"
-      },
-      {
-        "account": "5208",
-        "accountLabel": "5208 Snow Removal Expense",
-        "labelCell": "B82",
-        "total": 140.0,
-        "totalCell": "C82",
-        "setKey": "pct_no_house",
-        "amounts": [101.46, 0.0, 24.94, 13.6, 0.0, 0.0, 0.0],
-        "amountCells": "D82:J82",
-        "remainderColumn": "Rentals:The Shed (G)"
-      },
-      {
-        "account": "5209",
-        "accountLabel": "5209 Cleaning Expense",
-        "labelCell": "B83",
-        "total": 91.75,
-        "totalCell": "C83",
-        "setKey": "pct_no_house",
-        "amounts": [66.49, 0.0, 16.34, 8.92, 0.0, 0.0, 0.0],
-        "amountCells": "D83:J83",
-        "remainderColumn": "Rentals:The Shed (G)"
-      },
-      {
-        "account": "5211",
-        "accountLabel": "5211 Professional Fees Expense",
-        "labelCell": "B84",
-        "total": 1188.5,
-        "totalCell": "C84",
-        "setKey": "pct_all_months",
-        "amounts": [622.0, 91.73, 152.89, 83.39, 91.73, 91.73, 55.03],
-        "amountCells": "D84:J84",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      },
-      {
-        "account": "5212",
-        "accountLabel": "5212 Bank Fees Expense",
-        "labelCell": "B85",
-        "total": -3.0,
-        "totalCell": "C85",
-        "setKey": "pct_all_months",
-        "amounts": [-1.57, -0.23, -0.39, -0.21, -0.23, -0.23, -0.14],
-        "amountCells": "D85:J85",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      },
-      {
-        "account": "5213",
-        "accountLabel": "5213 Postage & Delivery Expense",
-        "labelCell": "B86",
-        "total": 89.36,
-        "totalCell": "C86",
-        "setKey": "pct_all_months",
-        "amounts": [46.77, 6.9, 11.5, 6.27, 6.9, 6.9, 4.12],
-        "amountCells": "D86:J86",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      },
-      {
-        "account": "5214",
-        "accountLabel": "5214 Software Expense",
-        "labelCell": "B87",
-        "total": 697.99,
-        "totalCell": "C87",
-        "setKey": "pct_all_months",
-        "amounts": [365.29, 53.87, 89.79, 48.98, 53.87, 53.87, 32.32],
-        "amountCells": "D87:J87",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      },
-      {
-        "account": "5215",
-        "accountLabel": "5215 Supplies Expense",
-        "labelCell": "B88",
-        "total": 807.47,
-        "totalCell": "C88",
-        "setKey": "pct_all_months",
-        "amounts": [422.59, 62.32, 103.87, 56.66, 62.32, 62.32, 37.39],
-        "amountCells": "D88:J88",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      },
-      {
-        "account": "5216",
-        "accountLabel": "5216 Travel Expense",
-        "labelCell": "B89",
-        "total": 2294.89,
-        "totalCell": "C89",
-        "setKey": "pct_all_months",
-        "amounts": [1201.04, 177.13, 295.21, 161.03, 177.13, 177.13, 106.22],
-        "amountCells": "D89:J89",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      },
-      {
-        "account": "5217",
-        "accountLabel": "5217 Meals and Entertainment Expense",
-        "labelCell": "B90",
-        "total": 2147.62,
-        "totalCell": "C90",
-        "setKey": "pct_all_months",
-        "amounts": [1123.96, 165.76, 276.27, 150.69, 165.76, 165.76, 99.42],
-        "amountCells": "D90:J90",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      },
-      {
-        "account": "5224",
-        "accountLabel": "5224 Donations Expense",
-        "labelCell": "B91",
-        "total": 1650.0,
-        "totalCell": "C91",
-        "setKey": "pct_all_months",
-        "amounts": [863.53, 127.35, 212.26, 115.78, 127.35, 127.35, 76.38],
-        "amountCells": "D91:J91",
-        "remainderColumn": "Rentals:533 Mystic Lane (J)"
-      }
-    ],
-    "totals": {
-      "byColumn": null,
-      "grand": null,
-      "cell": null,
-      "note": "The sheet has no totals row for this block; column K holds 17 ERROR-check formulas (K75:K91) that all evaluate to empty."
-    },
-    "note": "For each expense account, the year's General-class total (column C) is spread across the properties. Property-type costs 5204-5209 (landscaping, utilities, repairs, trash, snow, cleaning) use 'Just Chisel Creek' (Land / Clubhouse / Shed); each cell is ROUND(total x share, 2) and the rounding remainder goes to The Shed (G = C - D - F). Overhead accounts 5211-5224 use 'All' (value x months across all seven properties); remainder to 533 Mystic (J = C - sum of D:I). Bank fees 5212 are a -3.00 credit and are spread the same way."
-  },
-  "other": [
-    {
-      "title": "Tax Assessment",
-      "cellRange": "B2:H9",
-      "summary": "Tax assessment math for the 1625 parcel in 2022: common level ratio 0.395 (C4) and tax rate 0.0341 (C5); the assessment of land 69,130 plus buildings 141,000 (Original) rose by 758,860 in buildings (Change) to 968,990 (New). Total market value = assessment / 0.395 and total tax = assessment x 0.0341 (Original 7,165.43 -> New 33,042.56). Informational; not used by the allocations below.",
-      "data": [
-        ["Common Level Ratio", 0.395],
-        ["Tax Rate", 0.0341],
-        ["2022 Assessment", "Original", "Change", "New"],
-        ["Land", 69130.0, 0.0, 69130.0],
-        ["Buildings", 141000.0, 758860.0, 899860.0],
-        ["Total Assessment", 210130.0, null, 968990.0],
-        ["Total MV", 531974.68, null, 2453139.24],
-        ["Total Tax", 7165.433, null, 33042.559]
-      ],
-      "cells": [
-        "B2",
-        "B4",
-        "C4",
-        "B5",
-        "C5",
-        "E4",
-        "F4",
-        "G4",
-        "H4",
-        "E5",
-        "F5",
-        "G5",
-        "H5",
-        "E6",
-        "F6",
-        "G6",
-        "H6",
-        "E7",
-        "F7",
-        "H7",
-        "E8",
-        "F8",
-        "H8",
-        "E9",
-        "F9",
-        "H9"
-      ]
-    },
-    {
-      "title": "Allocation Percentage Calculations",
-      "cellRange": "B11",
-      "summary": "Section title for the land valuation and percentage tables (rows 13-32).",
-      "data": [["Allocation Percentage Calculations"]]
-    },
-    {
-      "title": "Acres / value table header and totals",
-      "cellRange": "B17:H17, B22:D22",
-      "summary": "Header row of the property table (Acres, Property, Total Value and the four percentage sets) and its totals: 110 acres in all (B22, an input; The Land's 72.8 acres is the remainder) and 4,287,600 total value (D22).",
-      "data": [
-        [
-          "Acres",
-          "Property",
-          "Total Value",
-          "% (all)",
-          "% (no Shed)",
-          "% (no house)",
-          "% (no shed/house)"
-        ],
-        [110.0, null, 4287600.0]
-      ]
-    },
-    {
-      "title": "533 Mystic rented period (Bolmer tenancy)",
-      "cellRange": "G24:H27",
-      "summary": "533 Mystic was rented to the Bolmers from 2022-02-25 to 2022-07-31: 157 days (H26 = end - start + 1), i.e. 43.0137% of the year (H27 = 157/365). This single fraction is the business share of every 533 Mystic bill (C47, C49, C51, C53); the rest is not a business expense.",
-      "data": [
-        ["Bolmer Start Date", "2022-02-25"],
-        ["Bolmer End Date", "2022-07-31"],
-        ["Days", 157.0],
-        ["% of year", 0.430137]
-      ]
-    },
-    {
-      "title": "Bill table titles, headers and totals rows",
-      "cellRange": "B34:J36, B44:J44, B46:I46, B55:J55, B63:J63, B65:J65, B71:J71",
-      "summary": "The section title, the four table header rows and the three totals rows of the tax-and-insurance block; the detail is in specificBills and the totals in specificBillsTables.",
-      "data": [
-        [
-          "Bills Paid in 2022",
-          8008.84,
-          6164.27,
-          5910.95,
-          6276.52,
-          2878.01,
-          53062.51,
-          1015.22,
-          83316.32
-        ],
-        ["% that is business expense"],
-        [
-          "$ that is business expense",
-          3444.9,
-          6164.27,
-          5910.95,
-          6276.52,
-          2878.01,
-          37094.26,
-          1015.22,
-          62784.12
-        ],
-        [
-          "final allocation",
-          3491.89,
-          6242.63,
-          5989.31,
-          6354.88,
-          3050.46,
-          30225.55,
-          7429.41,
-          62784.12
-        ]
-      ]
-    }
-  ],
-  "coverage": {
-    "nonEmptyCells": 560,
-    "accountedFor": 560,
-    "unaccounted": [],
-    "note": "Counted from the cached-value view of the sheet. The 17 check formulas in K75:K91 (=IF(SUM(..)<>total,\"ERROR\",\"\")) all evaluate to an empty string and so are not non-empty cells."
-  }
+  "specificBillsNote": "specificBills are the five allocations the sheet actually performs (rows 66–70 for the 1625 parcel's business share and the umbrella premium). The bills as paid per property, the business-percentage table and the business-dollar table are kept verbatim under billsPaidByProperty and specificBillsTables."
 }

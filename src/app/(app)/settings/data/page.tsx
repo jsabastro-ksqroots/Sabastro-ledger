@@ -5,6 +5,7 @@ import { requireFullSession } from "@/lib/auth/current-user";
 import { hasFullAccess } from "@/lib/auth/permissions";
 import { formatDateTime } from "@/lib/format";
 import {
+  checksSentence,
   importSourceDir,
   listImportRuns,
   listReferenceModels,
@@ -27,6 +28,30 @@ import { RerunImportForm } from "@/components/settings/data/rerun-import-form";
 export const metadata = { title: "Data" };
 export const dynamic = "force-dynamic";
 
+function resultChip(r: {
+  status: string;
+  isStale: boolean;
+  checks: { failed: number; failedCritical: number } | null;
+}) {
+  if (r.status === "RUNNING")
+    return r.isStale ? (
+      <StatusChip status="VOIDED" label="Interrupted" />
+    ) : (
+      <StatusChip status="DRAFT" label="Running" />
+    );
+  if (r.status === "FAILED") return <StatusChip status="VOIDED" label="Stopped" />;
+  if (!r.checks || r.checks.failed === 0)
+    return <StatusChip status="POSTED" label="All checks pass" />;
+  if (r.checks.failedCritical === 0)
+    return (
+      <StatusChip
+        status="FLAGGED"
+        label={`Numbers tie · ${r.checks.failed} note${r.checks.failed === 1 ? "" : "s"}`}
+      />
+    );
+  return <StatusChip status="VOIDED" label="Checks differ" />;
+}
+
 export default async function DataPage() {
   const user = await requireFullSession("/settings/data");
   const [sources, runs, models] = await Promise.all([
@@ -35,7 +60,9 @@ export default async function DataPage() {
     listReferenceModels(db),
   ]);
   const latest =
-    runs.find((r) => r.hasReport && !r.dryRun) ?? runs.find((r) => r.hasReport) ?? null;
+    runs.find((r) => r.hasReport && !r.dryRun && r.status === "SUCCEEDED") ??
+    runs.find((r) => r.hasReport) ??
+    null;
   const filesPresent = sources.every((s) => s.present);
   const totalImported = sources.reduce(
     (t, s) =>
@@ -56,13 +83,13 @@ export default async function DataPage() {
           latest ? (
             <div className="flex gap-2">
               <Button asChild variant="outline" size="sm">
-                <Link href="/settings/data/report">
+                <Link href={`/settings/data/report?run=${latest.id}`}>
                   <FileText aria-hidden />
                   Open import report
                 </Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <a href="/api/import/report">
+                <a href={`/api/import/report?run=${latest.id}`}>
                   <Download aria-hidden />
                   Download .md
                 </a>
@@ -92,21 +119,33 @@ export default async function DataPage() {
               <dl className="grid grid-cols-[8rem_1fr] gap-y-1">
                 <dt className="text-muted-foreground">Imported</dt>
                 <dd className="tabular">
-                  {s.transactions.posted.toLocaleString("en-US")} posted
-                  {s.transactions.flagged ? `, ${s.transactions.flagged} flagged` : ""}
-                  {s.transactions.voided ? `, ${s.transactions.voided} voided` : ""}
-                  {s.transactions.draft ? `, ${s.transactions.draft} draft` : ""}
-                  {s.firstDate ? ` · ${s.firstDate} → ${s.lastDate}` : ""}
+                  {totalImported === 0 && s.transactions.posted === 0 ? (
+                    "nothing yet"
+                  ) : (
+                    <>
+                      {s.transactions.posted.toLocaleString("en-US")} posted
+                      {s.transactions.flagged ? `, ${s.transactions.flagged} flagged` : ""}
+                      {s.transactions.voided ? `, ${s.transactions.voided} voided` : ""}
+                      {s.transactions.draft ? `, ${s.transactions.draft} draft` : ""}
+                      {s.firstDate ? ` · ${s.firstDate} → ${s.lastDate}` : ""}
+                    </>
+                  )}
                 </dd>
                 <dt className="text-muted-foreground">On disk</dt>
                 <dd className="tabular">
                   {s.present
-                    ? `${((s.bytes ?? 0) / 1024).toFixed(0)} KB, modified ${formatDateTime(s.modifiedAt ? new Date(s.modifiedAt) : null)}`
-                    : `not found in ${importSourceDir()}`}
+                    ? `${((s.bytes ?? 0) / 1024).toFixed(0)} KB, saved ${formatDateTime(s.modifiedAt ? new Date(s.modifiedAt) : null)}`
+                    : "not found in the import folder"}
                 </dd>
-                <dt className="text-muted-foreground">SHA-256</dt>
-                <dd className="truncate font-mono text-xs" title={s.sha256 ?? undefined}>
-                  {s.sha256 ?? "—"}
+                <dt className="text-muted-foreground">Same file?</dt>
+                <dd title={s.sha256 ? `SHA-256 ${s.sha256}` : undefined}>
+                  {!s.present
+                    ? "—"
+                    : !s.importedAt
+                      ? "Not imported yet."
+                      : s.changedSinceImport
+                        ? `Changed since the import of ${formatDateTime(new Date(s.importedAt))}. Rows already in the ledger are not updated by a re-run; only rows missing from the ledger are added.`
+                        : `Unchanged since the import of ${formatDateTime(new Date(s.importedAt))}.`}
                 </dd>
               </dl>
             </CardContent>
@@ -120,14 +159,18 @@ export default async function DataPage() {
           <CardDescription>
             {totalImported === 0
               ? "Nothing has been imported yet. The import reads both workbooks, checks every number against the acceptance list, and only then writes."
-              : "Idempotent: each source row is keyed on its file and row number, so a re-run inserts only what is missing and re-checks the rest."}
+              : "Safe to run again: rows already in the ledger are skipped, everything else is re-checked, and a check that does not tie stops the run with nothing written."}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <RerunImportForm canRun={hasFullAccess(user.role)} filesPresent={filesPresent} />
+          <RerunImportForm
+            canRun={hasFullAccess(user.role)}
+            filesPresent={filesPresent}
+            sourceDir={importSourceDir()}
+          />
           <p className="text-muted-foreground mt-3 text-xs">
-            From the Terminal: <code>pnpm import:run</code> (or <code>pnpm import:dry-run</code>).
-            Either way the report lands here and in <code>docs/IMPORT_REPORT.md</code>.
+            The import can also be run from the Terminal (see the “Importing the historical books”
+            section of HOW_TO_RUN.md), which also saves the report as a file.
           </p>
         </CardContent>
       </Card>
@@ -148,9 +191,9 @@ export default async function DataPage() {
                   <TableHead>Who</TableHead>
                   <TableHead>How</TableHead>
                   <TableHead>Result</TableHead>
-                  <TableHead className="text-right">Inserted (2019–24 / 2025 / models)</TableHead>
-                  <TableHead className="text-right">Skipped</TableHead>
-                  <TableHead className="text-right">Checks</TableHead>
+                  <TableHead className="text-right">Added (2019–24 / 2025 / models)</TableHead>
+                  <TableHead className="text-right">Already there</TableHead>
+                  <TableHead>Checks</TableHead>
                   <TableHead className="text-right" />
                 </TableRow>
               </TableHeader>
@@ -166,26 +209,7 @@ export default async function DataPage() {
                       {r.dryRun ? " · dry run" : ""}
                     </TableCell>
                     <TableCell>
-                      <StatusChip
-                        status={
-                          r.status === "SUCCEEDED"
-                            ? r.allChecksPassed
-                              ? "POSTED"
-                              : "FLAGGED"
-                            : r.status === "FAILED"
-                              ? "VOIDED"
-                              : "DRAFT"
-                        }
-                        label={
-                          r.status === "SUCCEEDED"
-                            ? r.allChecksPassed
-                              ? "All checks pass"
-                              : "Checks differ"
-                            : r.status === "FAILED"
-                              ? "Stopped"
-                              : "Running"
-                        }
-                      />
+                      {resultChip(r)}
                       {r.error ? (
                         <div
                           className="text-muted-foreground mt-1 max-w-[24rem] truncate text-xs"
@@ -205,8 +229,8 @@ export default async function DataPage() {
                         ? `${r.skipped.a.toLocaleString("en-US")} / ${r.skipped.b} / ${r.skipped.models}`
                         : "—"}
                     </TableCell>
-                    <TableCell className="tabular text-right">
-                      {r.checks ? `${r.checks.total - r.checks.failed}/${r.checks.total}` : "—"}
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {r.checks ? checksSentence(r.checks) : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       {r.hasReport ? (

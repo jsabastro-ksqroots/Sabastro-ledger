@@ -37,7 +37,8 @@
     "e2e:install": "playwright install chromium",
     "user:set-password": "tsx scripts/set-password.ts",
     "import:run": "tsx scripts/import/run.ts",
-    "import:dry-run": "tsx scripts/import/run.ts --dry-run"
+    "import:dry-run": "tsx scripts/import/run.ts --dry-run",
+    "import:reset-dev": "tsx scripts/import/reset-dev.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "5.9.1",

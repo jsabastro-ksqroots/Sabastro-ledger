@@ -12,10 +12,12 @@ Next session: **Phase 3 — receipts, AI classifier, review queue.** Paste the P
 ## Done in Phase 2
 
 - **The books are in.** `pnpm import:run` reads the two private workbooks in `data/source/` and loads
-  2,999 transactions for 2019–2024 (7,140 lines exactly as written; 4 zero-amount placeholders voided),
+  2,999 transactions for 2019–2024 (7,140 lines exactly as written; 4 zero-amount placeholders voided;
+  12 workbook numbers that cover two bookings are kept together with the header taken from the bank
+  movement, P2-3),
   833 transactions for 2025 (832 posted, the Eureka Ergonomic split row as a flagged draft) and 28
   archived reference allocation models (the 2020–2024 Tax Worksheets). Every number in the
-  `DATA_SOURCES.md` acceptance checklist is reproduced — **490 of 490 checks pass to the cent** — first
+  `DATA_SOURCES.md` acceptance checklist is reproduced — **498 of 498 checks pass to the cent** — first
   from the files, then read back from the database inside the same transaction before commit. Second
   run: 0 / 0 / 0 inserted in about two seconds. The report is `docs/IMPORT_REPORT.md` (also in
   Settings → Data).
@@ -38,15 +40,19 @@ Next session: **Phase 3 — receipts, AI classifier, review queue.** Paste the P
   from each), "Check without writing" / "Re-run import" (Owner or Full), every run with who / when /
   inserted / skipped / checks, the archived reference models with their shares, the report rendered
   in-app (`/settings/data/report`, `?run=<id>` for older runs) and downloadable as `.md`.
-- **Decisions** P2-1 … P2-17 in `docs/DECISIONS.md`; corrections to the Phase 0 counts are noted at the
+- **Decisions** P2-1 … P2-22 in `docs/DECISIONS.md`; corrections to the Phase 0 counts are noted at the
   top of `DATA_SOURCES.md` and at the end of `docs/WORKBOOK_VERIFICATION.md`.
-- **Tests**: `pnpm test` = 14 files / 123 tests, incl. `tests/core/import.test.ts` (pure rules, the loader
-  against the database with the restricted role, allocation immutability and share rules, and the whole
-  import twice when the workbooks are on the machine). `pnpm typecheck` and `pnpm lint` clean.
+- **Tests**: `pnpm test` = 14 files / 125 tests, incl. `tests/core/import.test.ts` (pure rules, the two
+  readers on small workbooks built in the test, the loader against the database with the restricted role,
+  allocation immutability and share rules, and the whole import twice when the workbooks are on the
+  machine). `pnpm typecheck` and `pnpm lint` clean.
 - **Verification method**: a separate agent re-derived every acceptance number with Python/openpyxl
   without seeing the TypeScript; both agree with each other and with the documents. The five worksheet
-  transcriptions were each verified by an independent agent (748 cell-addressed numbers) and are
-  re-verified by the import on every run.
+  transcriptions were each verified by an independent agent and are re-verified by the import on every
+  run (every cell-addressed number, the sheet's cell count, and each allocated bill against its set). A
+  five-lens adversarial review of the first commit produced 36 findings; the real ones (the twelve merged
+  2024 entries, floored shares, a download route without the settings check, a re-run that would fail
+  after the first legitimate edit, stuck "running" rows, and more) are fixed in the second commit.
 
 ## How to try it
 
@@ -68,13 +74,15 @@ What to click, in order:
 3. **Ledger** SREI · 2025: 668 rows (661 imported). Filter class **Providence**: the 89 rows paid from
    1101 (and 3 via Venmo) carry the `PLA↔SREI` marker; open one to see the bridge lines. Switch the
    entity to **PLA**: the same 92 rows appear in PLA's ledger next to the 172 rows on the PLA bank.
-4. **Review**: the one flagged draft (#464 Eureka Ergonomic, capitalize vs expense) waits for Jose.
+4. The one flagged draft (#464 Eureka Ergonomic, capitalize vs expense) sits in the **PLA · 2025 ledger**
+   with a Flagged chip (the Review page is still the Phase 0 placeholder; the queue arrives in Phase 3).
 5. **Settings → Data**: both files present with their SHA-256, the runs listed (one dry run, the real
    import, and the re-runs that inserted nothing), "Open import report", the 28 reference models with
    their percentages. Press **Check without writing**: "nothing new to
-   import; 490 of 490 checks pass".
-6. **Settings → Activity**: filter action `import.run` — one row per run with the counts; the first real
-   run is marked as a closed-year override (the 2019–2024 years are filed).
+   import; 498 of 498 checks pass".
+6. **Settings → Activity**: filter on actions starting with `import.` — `import.run` for a real run (the
+   first one is marked as a closed-year override because the 2019–2024 years are filed), `import.dry_run`
+   for rehearsals, `import.failed` when a run stopped.
 
 ## Blocked / needs a human
 
@@ -93,7 +101,12 @@ What to click, in order:
 3. Phase 1's three questions (money-in bridge class, bank lines per class, direct posting) still stand.
 4. **Storage kind of the 2019–2024 year-end entries**: entries with no bank line dated 12-31 or touching
    depreciation are stored as _adjusting_ entries (132), the other no-bank entries as _journal_ entries
-   (40). Fine as is, or should every no-bank entry be "adjusting"? (P2-2.)
+   (47, including the seven payment-and-reversal pairs). Fine as is, or should every no-bank entry be
+   "adjusting"? (P2-2, P2-18.)
+5. **Twelve 2024 entries that cover two bookings** (P2-3): the workbook numbered the monthly 3,000.00
+   Clubhouse rent booking together with the next bank item. They are imported as one transaction each
+   (the row shows the bank item; the rent booking sits in its journal lines). Should they be split into
+   two transactions? The list is in `docs/IMPORT_REPORT.md` under "entries worth a glance".
 
 ## Known gaps / notes for later phases
 
@@ -104,11 +117,14 @@ What to click, in order:
 - Reference models are `is_reference = true`; Phase 5 must treat them as read-only (no new versions, no
   apply) and can offer "Copy to 2025" from them.
 - Settings tabs AI, Models, Tax mapping are still greyed placeholders.
-- `scripts/__qa-login.ts` is a temporary helper for browser checks and is not committed.
+- Development only: `pnpm import:reset-dev` removes everything the import wrote from a local database
+  (users, chart, classes, tax years, hand-entered rows and the audit log stay) so the import can run again
+  after the importer changes; it was used once on this Mac on 2026-09-13 to re-import with the review
+  fixes. The Terminal import needs `--user <email>` so the audit trail names the person running it.
 
 ## Notes for Phase 3 (receipts + AI classifier + review queue)
 
-- Vendor memory has a real corpus now: 2,999 + 833 posted transactions with `verified_by_owner` on every
+- Vendor memory has a real corpus now: 2,995 + 832 posted transactions with `verified_by_owner` on every
   2019–2024 row and on 357 of the 2025 rows. `vendor` is the header field; 395 of the 2019–2024 entries
   have no vendor (year-end and bank-side entries) — skip those when building memory.
 - The review queue's first real items: the flagged #464 (capitalize vs expense) and, once receipts

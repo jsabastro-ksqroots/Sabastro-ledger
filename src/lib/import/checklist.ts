@@ -42,8 +42,15 @@ export const TARGET_A = {
   negativeCreditLines: 18,
   negativeDebitSum: $("−5,862.32"),
   negativeCreditSum: $("−5,862.32"),
-  /** Four 2024 rent entries carry the rent date on the income line and the deposit date on the bank line. */
+  /**
+   * Twelve 2024 workbook numbers cover two bookings: the monthly Clubhouse rent (income against a
+   * distribution, no cash) followed by an unrelated bank item. Kept together; header from the bank item.
+   */
+  mergedEntries: [2264, 2327, 2374, 2428, 2480, 2531, 2598, 2658, 2724, 2779, 2831, 2898],
+  /** Four of the merged entries carry two dates (the rent on the 1st, the bank item a day or two later). */
   mixedDateEntries: [2264, 2531, 2724, 2898],
+  /** A payment and its reversal on 1101, net 0.00: stored as journal entries so both lines show. */
+  selfCancellingEntries: [353, 504, 571, 928, 942, 947, 1034],
   /** Amounts with fractions of a cent, all inside the 2023 year-end reallocation entries 2236–2243. */
   subCentAmounts: 194,
   /** Formula cells exceljs reports without a cached value (openpyxl reads them as 0); all are zero amounts. */
@@ -526,16 +533,37 @@ export function checksForWorkbookA(x: WorkbookAExtract, chart: SeedChart): Check
   out.push(
     check(
       G,
-      "Entries whose lines carry two dates (earliest used)",
+      "Workbook numbers that cover two bookings (kept together, header from the bank item)",
+      TARGET_A.mergedEntries.join(", "),
+      entries
+        .filter((e) => e.isMerged)
+        .map((e) => e.txn)
+        .join(", "),
+      { critical: false, note: "See “entries worth a glance” in the report and decision P2-3." },
+    ),
+  );
+  out.push(
+    check(
+      G,
+      "…of which carry two dates (dated on the bank item)",
       TARGET_A.mixedDateEntries.join(", "),
       entries
         .filter((e) => e.mixedDates)
         .map((e) => e.txn)
         .join(", "),
-      {
-        critical: false,
-        note: "Rent booked on the 1st, deposited a day or two later; both dates are kept in the system note.",
-      },
+      { critical: false },
+    ),
+  );
+  out.push(
+    check(
+      G,
+      "Entries that are a payment and its reversal on one bank account (stored as journals)",
+      TARGET_A.selfCancellingEntries.join(", "),
+      entries
+        .filter((e) => e.isSelfCancelling)
+        .map((e) => e.txn)
+        .join(", "),
+      { critical: false },
     ),
   );
   const accounts = new Set(lines.map((l) => l.accountNumber));

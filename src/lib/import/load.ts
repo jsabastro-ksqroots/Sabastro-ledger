@@ -225,11 +225,26 @@ export function prepareEntryA(
   );
 
   const details: string[] = [];
-  if (entry.mixedDates) {
+  if (entry.isMerged) {
+    const parts = entry.subGroups.map((g) =>
+      g.touchesBank
+        ? `the bank movement ${g.name ?? "(no name)"} ${formatCents(g.totalCents)} (rows ${g.firstRow}–${g.lastRow}, ${g.dates.join(" / ")})`
+        : `a non-cash booking ${g.name ?? "(no name)"} ${formatCents(g.totalCents)} on ${g.accounts.join(" and ")} (rows ${g.firstRow}–${g.lastRow}, ${g.dates.join(" / ")})`,
+    );
+    details.push(
+      `The workbook numbers two bookings as one transaction: ${parts.join("; ")}. They are kept together to match the workbook (decision P2-3); the row's vendor, date and amount are the bank movement's, and the other booking is visible in the journal lines. Ask Jose and Jamin whether to split it into two transactions.`,
+    );
+  } else if (entry.mixedDates) {
     const byDate = new Map<string, number[]>();
     for (const l of entry.lines) byDate.set(l.date, [...(byDate.get(l.date) ?? []), l.row]);
     details.push(
-      `The workbook dates the lines differently: ${[...byDate.entries()].map(([d, rs]) => `${d} (row${rs.length === 1 ? "" : "s"} ${rs.join(", ")})`).join("; ")}. The earliest date is used for the transaction.`,
+      `The workbook dates the lines differently: ${[...byDate.entries()].map(([d, rs]) => `${d} (row${rs.length === 1 ? "" : "s"} ${rs.join(", ")})`).join("; ")}. The transaction is dated ${entry.date}, the earliest of them.`,
+    );
+  }
+  if (entry.isSelfCancelling) {
+    const first = entry.lines[0];
+    details.push(
+      `Both lines sit on the same bank account (${first?.accountLabel ?? "the bank"}): a payment of ${formatCents(entry.lines.reduce((t, l) => t + l.debitCents, 0n))} and its reversal, net 0.00. Stored as a journal entry so both lines stay visible; the ledger shows no cash movement for it.`,
     );
   }
   for (const l of entry.lines.filter((x) => x.normalised)) {
@@ -341,7 +356,7 @@ export function prepareRowB(
       note(
         id,
         "SYSTEM",
-        `Same-day identical row${ctx.duplicatesOf.length === 1 ? "" : "s"} in the snapshot: #${ctx.duplicatesOf.join(", #")} (same bank account, date and amount). Kept as a separate transaction: the 2025 review confirmed these are real, not duplicates.`,
+        `Same-day identical row${ctx.duplicatesOf.length === 1 ? "" : "s"} in the 2025 snapshot: snapshot row${ctx.duplicatesOf.length === 1 ? "" : "s"} ${ctx.duplicatesOf.map((n) => `#${n}`).join(", ")} (the “source row” shown under Provenance, not the ledger's own numbers) — same bank account, date and amount. Kept as a separate transaction: the 2025 review confirmed these are real, not duplicates.`,
         actor.userId,
         ms(now, t++),
       ),

@@ -481,7 +481,7 @@
     },
     {
       "key": "pct_land_expenses_readjusted",
-      "label": "% of Land Expenses",
+      "label": "% of Land Expenses (readjusted for 2022)",
       "headerCell": "T17",
       "basis": "ACRES",
       "secondaryBasis": null,
@@ -537,7 +537,7 @@
     },
     {
       "key": "pct_other_expenses_readjusted",
-      "label": "% of Other Expenses",
+      "label": "% of Other Expenses (readjusted for 2022)",
       "headerCell": "U17",
       "basis": "PERCENT",
       "secondaryBasis": null,

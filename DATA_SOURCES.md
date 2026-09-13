@@ -15,7 +15,10 @@
 > fractions of a cent; "Filled in by" has **31** distinct values and there are **797** distinct Row IDs
 > (the earlier counts included the blank); **92** 2025 rows are cross-entity (89 Providence on `1101`
 > plus 3 Providence via Venmo: #818, #843, #850); same-day identical rows = 7 groups / 15 rows on the key
-> (bank, date, amount). The import reproduces every money figure below to the cent.
+> (bank, date, amount). Twelve 2024 Transaction #s (2264, 2327, 2374, 2428, 2480, 2531, 2598, 2658, 2724,
+> 2779, 2831, 2898) cover two bookings each — the monthly Clubhouse rent booking and the next bank item —
+> and seven entries (353, 504, 571, 928, 942, 947, 1034) are a payment and its reversal on `1101` (P2-3,
+> P2-18). The import reproduces every money figure below to the cent.
 
 Both files live in `data/source/` (git-ignored). Everything below was verified by opening the files with `openpyxl`; re-verify counts in your import report.
 

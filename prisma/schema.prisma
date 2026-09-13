@@ -576,9 +576,11 @@ model AllocationModel {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  entity   Entity                   @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  taxYear  TaxYear                  @relation(fields: [taxYearId], references: [id], onDelete: Restrict)
-  versions AllocationModelVersion[]
+  entity         Entity                   @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  taxYear        TaxYear                  @relation(fields: [taxYearId], references: [id], onDelete: Restrict)
+  versions       AllocationModelVersion[]
+  currentVersion AllocationModelVersion?  @relation("model_current_version", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  appliedVersion AllocationModelVersion?  @relation("model_applied_version", fields: [appliedVersionId], references: [id], onDelete: SetNull)
 
   @@unique([taxYearId, name])
   @@index([entityId])
@@ -600,9 +602,11 @@ model AllocationModelVersion {
   createdById           String?          @map("created_by_id") @db.Uuid
   createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  model   AllocationModel    @relation(fields: [modelId], references: [id], onDelete: Restrict)
-  targets AllocationTarget[]
-  lines   TransactionLine[]
+  model     AllocationModel    @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  targets   AllocationTarget[]
+  lines     TransactionLine[]
+  currentOf AllocationModel[]  @relation("model_current_version")
+  appliedOf AllocationModel[]  @relation("model_applied_version")
 
   @@unique([modelId, versionNo])
   @@map("allocation_model_versions")

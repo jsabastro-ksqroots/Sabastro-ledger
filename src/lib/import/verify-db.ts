@@ -13,7 +13,9 @@ import { cents, SOURCE_A, SOURCE_B, type Check } from "./types";
 /**
  * The acceptance numbers read back from the database after the load (inside the same database
  * transaction, before commit). Live, non-bridge lines of POSTED transactions are what reports will read,
- * so that is what is summed here.
+ * so that is what is summed here. When a run wrote nothing new for a workbook, that workbook's checks are
+ * informational: the ledger may have been edited since the import (a duplicate voided, the flagged row
+ * confirmed), and a re-run must not fail because of legitimate bookkeeping.
  */
 
 type Row = Record<string, unknown>;
@@ -99,7 +101,12 @@ export interface DbExpectations {
   /** How the reader classified the 2019–2024 entries (bank / journal / adjusting), voided placeholders excluded. */
   kindsA: { BANK: number; JOURNAL: number; ADJUSTING: number };
   referenceModelsPerYear: Record<number, number>;
+  /** What this run wrote per workbook; a workbook with nothing new gets informational checks only. */
+  wrote: { a: { inserted: number; existing: number }; b: { inserted: number; existing: number } };
 }
+
+const EDITED_NOTE =
+  "Nothing new was written for this workbook, so this is a re-check only: the ledger may have been edited since the import (a row voided or confirmed), and a difference here does not stop the run.";
 
 export async function checksFromDatabase(tx: DbOrTx, expect: DbExpectations): Promise<Check[]> {
   const out: Check[] = [];
@@ -136,7 +143,7 @@ export async function checksFromDatabase(tx: DbOrTx, expect: DbExpectations): Pr
            count(*) FILTER (WHERE l."is_bridge")::int AS bridge,
            count(*) FILTER (WHERE l."entity_id" <> t."entity_id")::int AS foreign_lines
     FROM "transaction_lines" l JOIN "transactions" t ON t."id" = l."transaction_id"
-    WHERE t."source_file" = ${SOURCE_A} AND l."superseded_at" IS NULL
+    WHERE t."source_file" = ${SOURCE_A} AND t."status" = 'POSTED' AND l."superseded_at" IS NULL
     GROUP BY 1 ORDER BY 1`;
   let totalLines = 0;
   let dr = 0n;
@@ -225,22 +232,38 @@ export async function checksFromDatabase(tx: DbOrTx, expect: DbExpectations): Pr
     check(B, "Flagged drafts (the split row)", TARGET_B.splitRows.length, byStatusB.FLAGGED ?? 0),
   );
   const bankB = await tx.$queryRaw<Row[]>`
-    SELECT a."number" AS number, count(*)::int AS n, sum(l."debit_cents" - l."credit_cents")::bigint AS net
+    SELECT a."number" AS number, count(*)::int AS n, sum(l."debit_cents" - l."credit_cents")::bigint AS net,
+           count(*) FILTER (WHERE t."status" = 'POSTED')::int AS n_posted,
+           coalesce(sum(l."debit_cents" - l."credit_cents") FILTER (WHERE t."status" = 'POSTED'), 0)::bigint AS net_posted
     FROM "transaction_lines" l JOIN "transactions" t ON t."id" = l."transaction_id" JOIN "accounts" a ON a."id" = l."account_id"
     WHERE t."source_file" = ${SOURCE_B} AND l."superseded_at" IS NULL AND a."number" IN ('1101','1102','1103','1104')
     GROUP BY 1`;
   const bankRows = Object.fromEntries(
-    bankB.map((r) => [String(r.number), { n: num(r.n), net: big(r.net) }]),
+    bankB.map((r) => [
+      String(r.number),
+      { n: num(r.n), net: big(r.net), nPosted: num(r.n_posted), netPosted: big(r.net_posted) },
+    ]),
   );
   for (const [n, expected] of Object.entries(TARGET_B.byBank)) {
-    out.push(check(B, `Bank lines on ${n}`, expected, bankRows[n]?.n ?? 0));
+    out.push(check(B, `Bank lines on ${n} (posted + flagged)`, expected, bankRows[n]?.n ?? 0));
   }
   out.push(
     check(
       B,
-      "Net cash movement across 1101 + 1103 + Venmo",
+      "Net cash movement across 1101 + 1103 + Venmo (posted + flagged, as in the snapshot)",
       TARGET_B.amountSum,
       Object.values(bankRows).reduce((t, r) => t + r.net, 0n),
+    ),
+  );
+  out.push(
+    check(
+      B,
+      "Net cash movement, posted rows only (what reports and the bank balance show)",
+      TARGET_B.amountSum - TARGET_B.splitRowAmount,
+      Object.values(bankRows).reduce((t, r) => t + r.netPosted, 0n),
+      {
+        note: "Differs from the snapshot's total by the flagged Eureka Ergonomic row until Jose confirms it.",
+      },
     ),
   );
   const misc = await tx.$queryRaw<Row[]>`
@@ -290,13 +313,14 @@ export async function checksFromDatabase(tx: DbOrTx, expect: DbExpectations): Pr
     WHERE t."source_file" = ${SOURCE_B} GROUP BY 1`;
   const noteMap = Object.fromEntries(notes.map((r) => [String(r.kind), num(r.n)]));
   out.push(check(B, "User notes carried over", TARGET_B.userNoteRows, noteMap.USER ?? 0));
+  const minSystem = TARGET_B.rowCount + TARGET_B.ledgerNoteRows;
   out.push(
     check(
       B,
       "System notes (provenance + snapshot ledger notes + import notes)",
-      ">= " + (TARGET_B.rowCount + TARGET_B.ledgerNoteRows),
-      (noteMap.SYSTEM ?? 0) >= TARGET_B.rowCount + TARGET_B.ledgerNoteRows
-        ? ">= " + (TARGET_B.rowCount + TARGET_B.ledgerNoteRows)
+      `at least ${minSystem.toLocaleString("en-US")}`,
+      (noteMap.SYSTEM ?? 0) >= minSystem
+        ? `at least ${minSystem.toLocaleString("en-US")}`
         : String(noteMap.SYSTEM ?? 0),
       { critical: false },
     ),
@@ -322,17 +346,15 @@ export async function checksFromDatabase(tx: DbOrTx, expect: DbExpectations): Pr
     out.push(check("Tax years", `SREI ${y}`, "FILED", stateOf("SREI", y)));
   out.push(check("Tax years", "SREI 2025", "OPEN", stateOf("SREI", 2025)));
   out.push(check("Tax years", "PLA 2025", "OPEN", stateOf("PLA", 2025)));
+  const plaEarly = years
+    .filter((r) => String(r.code) === "PLA" && num(r.year) < 2025)
+    .map((r) => num(r.year));
   out.push(
     check(
       "Tax years",
       "PLA years before 2025",
       "none",
-      years.filter((r) => String(r.code) === "PLA" && num(r.year) < 2025).length === 0
-        ? "none"
-        : years
-            .filter((r) => String(r.code) === "PLA" && num(r.year) < 2025)
-            .map((r) => num(r.year))
-            .join(", "),
+      plaEarly.length === 0 ? "none" : plaEarly.join(", "),
       { critical: false },
     ),
   );
@@ -348,5 +370,19 @@ export async function checksFromDatabase(tx: DbOrTx, expect: DbExpectations): Pr
       ),
     );
   }
+
+  // A workbook that got nothing new this run is only re-checked.
+  const rechecked = (prefix: string) =>
+    out.forEach((c) => {
+      if (c.group.startsWith(prefix) && c.critical) {
+        c.critical = false;
+        c.note = c.ok ? c.note : [c.note, EDITED_NOTE].filter(Boolean).join(" ");
+      }
+    });
+  if (expect.wrote.a.inserted === 0 && expect.wrote.a.existing > 0)
+    rechecked("Database · 2019–2024");
+  if (expect.wrote.a.inserted === 0 && expect.wrote.a.existing > 0)
+    rechecked("Database · 2024 class");
+  if (expect.wrote.b.inserted === 0 && expect.wrote.b.existing > 0) rechecked("Database · 2025");
   return out;
 }

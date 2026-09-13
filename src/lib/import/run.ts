@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Prisma } from "@/generated/prisma/client";
 import type { Db, DbOrTx } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { findLockedYears, type YearPair } from "@/lib/ledger/locks";
 import { SEED_TAX_YEARS } from "@/lib/seed/seed-data";
 import { formatCents } from "@/lib/money";
 import {
@@ -27,9 +28,12 @@ import {
   type Lookups,
   type PreparedTransaction,
 } from "./load";
+import { sourcePaths } from "./paths";
 import {
   checkPercentageSet,
+  checkSpecificBills,
   loadReferenceModelFiles,
+  modelNamesFor,
   PERSONAL_TARGET,
   referenceModelDir,
   referenceModelNote,
@@ -47,8 +51,6 @@ import {
   cents,
   SOURCE_A,
   SOURCE_B,
-  WORKBOOK_A_FILE,
-  WORKBOOK_B_FILE,
   type Check,
   type WorkbookAExtract,
   type WorkbookBExtract,
@@ -60,13 +62,16 @@ import {
  *   1. read both workbooks and the transcribed reference models;
  *   2. reproduce the acceptance checklist from what was read — a critical miss stops here, nothing is
  *      written, and the report shows the difference;
- *   3. inside ONE database transaction: lock override for the filed years, tax-year states, the
- *      transactions that are not there yet (idempotent on source file + source row), the reference
- *      models, then the same checklist read back from the database; a miss rolls everything back;
- *   4. one audit row for the run, an import_runs row, and the report (Settings → Data and
- *      docs/IMPORT_REPORT.md).
+ *   3. inside ONE database transaction: tax-year states, the transactions that are not there yet
+ *      (idempotent on source file + source row), the reference models, then the same checklist read back
+ *      from the database; a miss rolls everything back. Filed years are written under the lock override
+ *      only when the run really touches them, and only the seed's history years (2019–2024) without an
+ *      explicit go-ahead;
+ *   4. one audit row for the run, an import_runs row, and the report (Settings → Data; the Terminal
+ *      also writes docs/IMPORT_REPORT.md when something changed).
  *
- * Running it again is a no-op: every source row is already present, so 0 rows are inserted.
+ * Running it again is a no-op: every source row is already present, so 0 rows are inserted, and the
+ * database checks become a re-check that tolerates bookkeeping done since the import.
  */
 
 export interface ImportOptions {
@@ -75,8 +80,15 @@ export interface ImportOptions {
   dryRun: boolean;
   actor: ImportActor & { displayName: string };
   trigger: "cli" | "app";
-  /** Where to write the Markdown report; null to skip the file (the database keeps a copy anyway). */
+  /** Where to write the Markdown report file; null to skip it (the database keeps a copy of every run). */
   reportPath: string | null;
+  /** "when-changed" (default): write the file only when the run inserted something, stopped, or the file is missing. */
+  reportPolicy?: "always" | "when-changed";
+  /**
+   * Allow new posted rows into closed/filed years other than the seed's history years (SREI 2019–2024,
+   * which the initial load must write). Default false: such a run stops before writing anything.
+   */
+  allowLockedYears?: boolean;
   log?: (line: string) => void;
 }
 
@@ -87,7 +99,12 @@ export interface ImportOutcome {
   summary: ImportSummary;
   report: string;
   allChecksPassed: boolean;
+  reportFileWritten: boolean;
+  reportFileWarning: string | null;
 }
+
+/** How long a run may show as "running" before it is treated as interrupted. */
+export const STALE_RUN_MS = 60 * 60_000;
 
 class ImportStopped extends Error {
   constructor(message: string) {
@@ -102,15 +119,17 @@ class DryRunRollback extends Error {
   }
 }
 
-export function sourcePaths(sourceDir: string): { key: "A" | "B"; file: string; path: string }[] {
-  return [
-    { key: "A", file: WORKBOOK_A_FILE, path: path.join(sourceDir, WORKBOOK_A_FILE) },
-    { key: "B", file: WORKBOOK_B_FILE, path: path.join(sourceDir, WORKBOOK_B_FILE) },
-  ];
-}
+export { sourcePaths };
 
 function critical(checks: Check[]): Check[] {
   return checks.filter((c) => !c.ok && c.critical);
+}
+
+function plainError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/Unique constraint failed/.test(message) || /P2002/.test(message))
+    return "Another import wrote the same source rows first (two imports ran at once). Nothing was written by this run; run it again.";
+  return message.replace(/\s+/g, " ").trim();
 }
 
 export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutcome> {
@@ -120,7 +139,7 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
   for (const p of paths) {
     if (!existsSync(p.path))
       throw new ImportStopped(
-        `The source workbook is missing: ${p.path}. Put the two workbooks in data/source/ (see DATA_SOURCES.md) and run again.`,
+        `The source workbook is missing: ${p.path}. Put the two workbooks named in DATA_SOURCES.md into ${opts.sourceDir} and run again.`,
       );
   }
   const modelsDir = opts.modelsDir ?? referenceModelDir();
@@ -143,13 +162,19 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
   const preB = checksForWorkbookB(b, chart);
   const modelChecks: Check[] = [];
   const wbA = await openWorkbook((paths[0] as { path: string }).path);
-  const modelVerification = new Map<number, { checked: number; mismatches: string[] }>();
+  const modelVerification = new Map<
+    number,
+    { checked: number; mismatches: string[]; nonEmptyCells: number; accountedFor: number }
+  >();
   for (const mf of modelFiles) {
     const v = verifyReferenceModelAgainstWorkbook(wbA, mf);
     const mismatches = v.mismatches.map(
       (m) => `${m.cell} (${m.where}): JSON ${m.expected} vs sheet ${m.found}`,
     );
-    modelVerification.set(mf.year, { checked: v.checked, mismatches });
+    const accountedFor = mf.coverage?.accountedFor ?? 0;
+    const nonEmptyCells = mf.coverage?.nonEmptyCells ?? 0;
+    const unaccounted = mf.coverage?.unaccounted ?? [];
+    modelVerification.set(mf.year, { checked: v.checked, mismatches, nonEmptyCells, accountedFor });
     modelChecks.push({
       group: "Reference models",
       label: `${mf.year}: transcribed numbers match the worksheet cells (${v.checked} checked)`,
@@ -170,16 +195,26 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
         critical: true,
       });
     }
-    const unaccounted = mf.coverage?.unaccounted ?? [];
+    const billProblems = checkSpecificBills(mf);
     modelChecks.push({
       group: "Reference models",
-      label: `${mf.year}: every non-empty worksheet cell is accounted for`,
-      expected: "yes",
-      actual: unaccounted.length
-        ? `no (${unaccounted.length}: ${unaccounted.slice(0, 8).join(", ")})`
-        : "yes",
-      ok: unaccounted.length === 0,
+      label: `${mf.year}: each allocated bill is its percentage set applied to its total`,
+      expected: "ok",
+      actual: billProblems.length ? billProblems.join("; ") : "ok",
+      ok: billProblems.length === 0,
+      critical: true,
+    });
+    modelChecks.push({
+      group: "Reference models",
+      label: `${mf.year}: every non-empty worksheet cell is accounted for (the transcription's own count)`,
+      expected: `${nonEmptyCells} cells`,
+      actual:
+        accountedFor === nonEmptyCells && unaccounted.length === 0
+          ? `${nonEmptyCells} cells`
+          : `${accountedFor} accounted for, ${unaccounted.length} unaccounted${unaccounted.length ? ` (${unaccounted.slice(0, 8).join(", ")})` : ""}`,
+      ok: accountedFor === nonEmptyCells && unaccounted.length === 0,
       critical: false,
+      note: "Documentation only: the numbers themselves are verified cell by cell above.",
     });
   }
   modelChecks.push({
@@ -200,6 +235,28 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
     `Checks before writing: 2019–2024 ${s.a.total - s.a.failed}/${s.a.total} · 2025 ${s.b.total - s.b.failed}/${s.b.total} · models ${s.m.total - s.m.failed}/${s.m.total}`,
   );
 
+  // Run bookkeeping: a run the app never finished is marked interrupted; only one run at a time.
+  await db.importRun.updateMany({
+    where: { status: "RUNNING", startedAt: { lt: new Date(startedAt.getTime() - STALE_RUN_MS) } },
+    data: {
+      status: "FAILED",
+      finishedAt: startedAt,
+      error: "Interrupted: the app stopped before this run finished. Nothing it wrote was kept.",
+    },
+  });
+  const live = await db.importRun.findFirst({
+    where: { status: "RUNNING" },
+    orderBy: { startedAt: "desc" },
+  });
+  if (live) {
+    const minutes = Math.max(
+      1,
+      Math.round((startedAt.getTime() - live.startedAt.getTime()) / 60_000),
+    );
+    throw new ImportStopped(
+      `An import started ${minutes} minute${minutes === 1 ? "" : "s"} ago is still running. Wait for it to finish, then try again.`,
+    );
+  }
   const run = await db.importRun.create({
     data: {
       startedAt,
@@ -230,6 +287,7 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
     modelFiles,
     modelVerification,
   );
+  let finished = false;
 
   const finish = async (
     status: "SUCCEEDED" | "FAILED",
@@ -245,7 +303,27 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
       outcome: status === "FAILED" ? "FAILED" : opts.dryRun ? "DRY_RUN" : "SUCCEEDED",
       error,
     };
+    const inserted =
+      summary.load.a.inserted + summary.load.b.inserted + summary.load.models.inserted;
+    let reportFileWritten = false;
+    let reportFileWarning: string | null = null;
+    const policy = opts.reportPolicy ?? "when-changed";
+    const wantFile =
+      !!opts.reportPath &&
+      !opts.dryRun &&
+      (policy === "always" || status === "FAILED" || inserted > 0 || !existsSync(opts.reportPath));
     const report = renderReport(summary);
+    if (wantFile && opts.reportPath) {
+      try {
+        mkdirSync(path.dirname(opts.reportPath), { recursive: true });
+        writeFileSync(opts.reportPath, report);
+        reportFileWritten = true;
+      } catch (err) {
+        reportFileWarning = `The report could not be written to ${opts.reportPath} (${plainError(err)}). It is still available in Settings → Data.`;
+        log(reportFileWarning);
+      }
+    }
+    summary.reportFileWarning = reportFileWarning;
     const allChecksPassed =
       [
         ...summary.checks.preA,
@@ -260,14 +338,11 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
         status,
         summary: JSON.parse(JSON.stringify(summary)) as Prisma.InputJsonValue,
         allChecksPassed,
-        reportMarkdown: report,
+        reportMarkdown: renderReport(summary),
         error,
       },
     });
-    if (opts.reportPath && !opts.dryRun) {
-      mkdirSync(path.dirname(opts.reportPath), { recursive: true });
-      writeFileSync(opts.reportPath, report);
-    }
+    finished = true;
     if (opts.dryRun || status === "FAILED") {
       await audit(db, {
         action: opts.dryRun ? "import.dry_run" : "import.failed",
@@ -281,160 +356,215 @@ export async function runImport(db: Db, opts: ImportOptions): Promise<ImportOutc
         userAgent: opts.actor.userAgent ?? null,
       });
     }
-    return { runId: run.id, status, dryRun: opts.dryRun, summary, report, allChecksPassed };
+    return {
+      runId: run.id,
+      status,
+      dryRun: opts.dryRun,
+      summary,
+      report: renderReport(summary),
+      allChecksPassed,
+      reportFileWritten,
+      reportFileWarning,
+    };
   };
 
-  if (preCritical.length > 0) {
-    const msg = `${preCritical.length} critical check${preCritical.length === 1 ? "" : "s"} failed before anything was written: ${preCritical
-      .slice(0, 3)
-      .map((c) => `${c.label} (expected ${c.expected}, found ${c.actual})`)
-      .join("; ")}${preCritical.length > 3 ? "; …" : ""}. Nothing was changed.`;
-    log(msg);
-    return finish("FAILED", {}, msg);
-  }
-
-  // 3. Write, verify, commit (or roll back).
-  let result: { partial: Partial<ImportSummary>; error: string | null } | null = null;
   try {
-    await db.$transaction(
-      async (tx) => {
-        const lk = await buildLookups(tx);
-        const now = new Date();
-        await setLockOverride(tx, LOCK_OVERRIDE_REASON);
+    if (preCritical.length > 0) {
+      const msg = `${preCritical.length} critical check${preCritical.length === 1 ? "" : "s"} failed before anything was written: ${preCritical
+        .slice(0, 3)
+        .map((c) => `${c.label} (expected ${c.expected}, found ${c.actual})`)
+        .join("; ")}${preCritical.length > 3 ? "; …" : ""}. Nothing was changed.`;
+      log(msg);
+      return await finish("FAILED", {}, msg);
+    }
 
-        // Tax-year states (kickoff item 4): create what is missing, never move a state backwards.
-        const taxYears = await ensureTaxYearStates(tx, lk);
+    // 3. Write, verify, commit (or roll back).
+    let result: { partial: Partial<ImportSummary>; error: string | null } | null = null;
+    try {
+      await db.$transaction(
+        async (tx) => {
+          const lk = await buildLookups(tx);
+          const now = new Date();
 
-        // Transactions that are not there yet.
-        const haveA = await existingSourceRefs(tx, SOURCE_A);
-        const haveB = await existingSourceRefs(tx, SOURCE_B);
-        const preparedA: PreparedTransaction[] = [];
-        for (const e of a.entries) {
-          if (haveA.has(String(e.txn))) continue;
-          preparedA.push(prepareEntryA(e, lk, opts.actor, now));
-        }
-        const dupOf = new Map<number, number[]>();
-        for (const g of sameDayGroups(b.rows))
-          for (const r of g)
-            dupOf.set(
-              r.ref,
-              g.filter((x) => x.ref !== r.ref).map((x) => x.ref),
+          // Tax-year states (kickoff item 4): create what is missing, never move a state backwards.
+          const taxYears = await ensureTaxYearStates(tx, lk, opts.actor, now);
+
+          // Transactions that are not there yet.
+          const haveA = await existingSourceRefs(tx, SOURCE_A);
+          const haveB = await existingSourceRefs(tx, SOURCE_B);
+          const preparedA: PreparedTransaction[] = [];
+          for (const e of a.entries) {
+            if (haveA.has(String(e.txn))) continue;
+            preparedA.push(prepareEntryA(e, lk, opts.actor, now));
+          }
+          const dupOf = new Map<number, number[]>();
+          for (const g of sameDayGroups(b.rows))
+            for (const r of g)
+              dupOf.set(
+                r.ref,
+                g.filter((x) => x.ref !== r.ref).map((x) => x.ref),
+              );
+          const preparedB: PreparedTransaction[] = [];
+          for (const r of b.rows) {
+            if (haveB.has(String(r.ref))) continue;
+            preparedB.push(
+              prepareRowB(r, lk, opts.actor, now, { duplicatesOf: dupOf.get(r.ref) ?? [] }),
             );
-        const preparedB: PreparedTransaction[] = [];
-        for (const r of b.rows) {
-          if (haveB.has(String(r.ref))) continue;
-          preparedB.push(
-            prepareRowB(r, lk, opts.actor, now, { duplicatesOf: dupOf.get(r.ref) ?? [] }),
+          }
+
+          // Closed or filed years the new rows would land in. The initial load must write the seed's
+          // history years; anything else needs an explicit go-ahead.
+          const pairs: YearPair[] = [...preparedA, ...preparedB]
+            .filter((p) => p.header.status === "POSTED" || p.header.status === "VOIDED")
+            .flatMap((p) => {
+              const year = (p.header.date as Date).getUTCFullYear();
+              const entities = new Set<string>([
+                p.header.entityId as string,
+                ...p.lines.map((l) => l.entityId).filter((x): x is string => !!x),
+              ]);
+              return [...entities].map((entityId) => ({ entityId, year }));
+            });
+          const locked = await findLockedYears(tx, pairs);
+          const historyYears = new Set(
+            SEED_TAX_YEARS.filter((t) => t.state === "FILED").map(
+              (t) => `${lk.entityByCode.get(t.entityCode)}:${t.year}`,
+            ),
           );
-        }
-        log(
-          `Writing ${preparedA.length.toLocaleString("en-US")} + ${preparedB.length} transactions (${haveA.size.toLocaleString("en-US")} + ${haveB.size} already present)…`,
-        );
-        await insertPrepared(tx, preparedA, (done, total) => log(`  2019–2024: ${done}/${total}`));
-        await insertPrepared(tx, preparedB, (done, total) => log(`  2025: ${done}/${total}`));
+          const notAllowed = locked.filter((y) => !historyYears.has(`${y.entityId}:${y.year}`));
+          if (notAllowed.length > 0 && !opts.allowLockedYears) {
+            const rowsPerYear = notAllowed.map((y) => {
+              const n = pairs.filter((p) => p.entityId === y.entityId && p.year === y.year).length;
+              return `${y.entityCode} ${y.year} (${y.state.toLowerCase()}, ${n} new row${n === 1 ? "" : "s"})`;
+            });
+            throw new ImportStopped(
+              `New rows would land in a closed or filed year: ${rowsPerYear.join("; ")}. Nothing was written. Re-open the year, or run the import from the Terminal with --allow-filed after confirming with Jose.`,
+            );
+          }
+          if (locked.length > 0) await setLockOverride(tx, LOCK_OVERRIDE_REASON);
+          const lockedYearsTouched = locked.map(
+            (y) => `${y.entityCode} ${y.year} (${y.state.toLowerCase()})`,
+          );
 
-        // Reference models.
-        const models = await insertReferenceModels(tx, lk, modelFiles, opts.actor, now);
-        log(`Reference models: ${models.inserted} archived, ${models.existing} already present`);
+          log(
+            `Writing ${preparedA.length.toLocaleString("en-US")} + ${preparedB.length} transactions (${haveA.size.toLocaleString("en-US")} + ${haveB.size} already present)…`,
+          );
+          await insertPrepared(tx, preparedA, (done, total) =>
+            log(`  2019–2024: ${done}/${total}`),
+          );
+          await insertPrepared(tx, preparedB, (done, total) => log(`  2025: ${done}/${total}`));
 
-        // Fire the deferred balance and share triggers now, so a dry run exercises them too.
-        await tx.$executeRawUnsafe("SET CONSTRAINTS ALL IMMEDIATE");
+          // Reference models.
+          const models = await insertReferenceModels(tx, lk, modelFiles, opts.actor, now);
+          log(`Reference models: ${models.inserted} archived, ${models.existing} already present`);
 
-        // Read the checklist back from the database.
-        const bridgedRowsB = b.rows.filter(isCrossEntityRow).length;
-        const kindsA = { BANK: 0, JOURNAL: 0, ADJUSTING: 0 };
-        for (const e of a.entries) if (!e.isVoidPlaceholder) kindsA[e.kind]++;
-        const dbChecks = await checksFromDatabase(tx, {
-          bridgedRowsB,
-          kindsA,
-          referenceModelsPerYear: Object.fromEntries(
-            modelFiles.map((m) => [m.year, m.percentageSets.length]),
-          ),
-        });
-        const failed = critical(dbChecks);
-        const lockedYearsTouched = preparedA.length
-          ? [...new Set(preparedA.map((p) => String((p.header.date as Date).getUTCFullYear())))]
-              .sort()
-              .map((y) => `SREI ${y}`)
-          : [];
-        const partial: Partial<ImportSummary> = {
-          checks: { ...base.checks, db: dbChecks },
-          load: {
-            a: { existing: haveA.size, inserted: preparedA.length },
-            b: { existing: haveB.size, inserted: preparedB.length },
-            models,
-            lockedYearsTouched,
-          },
-          taxYears,
-        };
-        if (failed.length > 0) {
-          result = {
-            partial,
-            error: `${failed.length} check${failed.length === 1 ? "" : "s"} read back from the database did not tie: ${failed
-              .slice(0, 3)
-              .map((c) => `${c.label} (expected ${c.expected}, found ${c.actual})`)
-              .join("; ")}. Everything was rolled back.`,
+          // Fire the deferred balance and share triggers now, so a dry run exercises them too.
+          await tx.$executeRawUnsafe("SET CONSTRAINTS ALL IMMEDIATE");
+
+          // Read the checklist back from the database.
+          const bridgedRowsB = b.rows.filter(isCrossEntityRow).length;
+          const kindsA = { BANK: 0, JOURNAL: 0, ADJUSTING: 0 };
+          for (const e of a.entries) if (!e.isVoidPlaceholder) kindsA[e.kind]++;
+          const wrote = {
+            a: { inserted: preparedA.length, existing: haveA.size },
+            b: { inserted: preparedB.length, existing: haveB.size },
           };
-          throw new ImportStopped(result.error as string);
-        }
-        await audit(tx, {
-          action: "import.run",
-          userId: opts.actor.userId,
-          sessionId: opts.actor.sessionId,
-          subjectType: "import_run",
-          subjectId: run.id,
-          subjectLabel: `historical import (${opts.trigger})`,
-          reason: lockedYearsTouched.length ? LOCK_OVERRIDE_REASON : null,
-          isLockOverride: lockedYearsTouched.length > 0,
-          after: {
-            inserted: {
-              workbookA: preparedA.length,
-              workbookB: preparedB.length,
-              referenceModels: models.inserted,
+          const dbChecks = await checksFromDatabase(tx, {
+            bridgedRowsB,
+            kindsA,
+            referenceModelsPerYear: Object.fromEntries(
+              modelFiles.map((m) => [m.year, m.percentageSets.length]),
+            ),
+            wrote,
+          });
+          const failed = critical(dbChecks);
+          const partial: Partial<ImportSummary> = {
+            checks: { ...base.checks, db: dbChecks },
+            load: { a: wrote.a, b: wrote.b, models, lockedYearsTouched },
+            taxYears,
+          };
+          if (failed.length > 0) {
+            result = {
+              partial,
+              error: `${failed.length} check${failed.length === 1 ? "" : "s"} read back from the database did not tie: ${failed
+                .slice(0, 3)
+                .map((c) => `${c.label} (expected ${c.expected}, found ${c.actual})`)
+                .join("; ")}. Everything was rolled back.`,
+            };
+            throw new ImportStopped(result.error as string);
+          }
+          await audit(tx, {
+            action: "import.run",
+            userId: opts.actor.userId,
+            sessionId: opts.actor.sessionId,
+            subjectType: "import_run",
+            subjectId: run.id,
+            subjectLabel: `historical import (${opts.trigger})`,
+            reason: locked.length ? LOCK_OVERRIDE_REASON : null,
+            isLockOverride: locked.length > 0,
+            after: {
+              inserted: {
+                workbookA: preparedA.length,
+                workbookB: preparedB.length,
+                referenceModels: models.inserted,
+              },
+              skipped: {
+                workbookA: haveA.size,
+                workbookB: haveB.size,
+                referenceModels: models.existing,
+              },
+              lockedYearsTouched,
+              sources: base.sources.map((x) => ({ file: x.file, sha256: x.sha256 })),
             },
-            skipped: {
-              workbookA: haveA.size,
-              workbookB: haveB.size,
-              referenceModels: models.existing,
-            },
-            lockedYearsTouched,
-            sources: base.sources.map((x) => ({ file: x.file, sha256: x.sha256 })),
+            ip: opts.actor.ip ?? null,
+            userAgent: opts.actor.userAgent ?? null,
+          });
+          result = { partial, error: null };
+          if (opts.dryRun) throw new DryRunRollback();
+        },
+        { timeout: 30 * 60_000, maxWait: 60_000 },
+      );
+    } catch (err) {
+      const r = result as { partial: Partial<ImportSummary>; error: string | null } | null;
+      if (err instanceof DryRunRollback) {
+        log("Dry run: rolled back.");
+      } else if (err instanceof ImportStopped) {
+        log(err.message);
+        return await finish("FAILED", r?.partial ?? {}, err.message);
+      } else {
+        const message = plainError(err);
+        log(`Stopped: ${message}`);
+        return await finish("FAILED", r?.partial ?? {}, message);
+      }
+    }
+    const r = result as { partial: Partial<ImportSummary>; error: string | null } | null;
+    return await finish("SUCCEEDED", r?.partial ?? {}, null);
+  } finally {
+    if (!finished) {
+      // finish() itself failed (for instance the database went away): never leave the row "running".
+      await db.importRun
+        .update({
+          where: { id: run.id },
+          data: {
+            status: "FAILED",
+            finishedAt: new Date(),
+            error: "The run could not be recorded properly; see the Terminal or server log.",
           },
-          ip: opts.actor.ip ?? null,
-          userAgent: opts.actor.userAgent ?? null,
-        });
-        result = { partial, error: null };
-        if (opts.dryRun) throw new DryRunRollback();
-      },
-      { timeout: 30 * 60_000, maxWait: 60_000 },
-    );
-  } catch (err) {
-    if (err instanceof DryRunRollback) {
-      log("Dry run: rolled back.");
-    } else if (err instanceof ImportStopped) {
-      log(err.message);
-      return finish(
-        "FAILED",
-        (result as { partial: Partial<ImportSummary> } | null)?.partial ?? {},
-        err.message,
-      );
-    } else {
-      const message = err instanceof Error ? err.message : String(err);
-      log(`Stopped: ${message}`);
-      return finish(
-        "FAILED",
-        (result as { partial: Partial<ImportSummary> } | null)?.partial ?? {},
-        message,
-      );
+        })
+        .catch(() => undefined);
     }
   }
-  const r = result as { partial: Partial<ImportSummary>; error: string | null } | null;
-  return finish("SUCCEEDED", r?.partial ?? {}, null);
 }
 
 // ---------------------------------------------------------------------------
 
-async function ensureTaxYearStates(tx: DbOrTx, lk: Lookups): Promise<ImportSummary["taxYears"]> {
+async function ensureTaxYearStates(
+  tx: DbOrTx,
+  lk: Lookups,
+  actor: ImportActor,
+  now: Date,
+): Promise<ImportSummary["taxYears"]> {
+  const stamp = { closedAt: now, closedById: actor.userId, filedAt: now, filedById: actor.userId };
+  const note = "Imported history (Phase 2); marked filed per CLAUDE.md";
   for (const t of SEED_TAX_YEARS) {
     const entityId = lk.entityByCode.get(t.entityCode) as string;
     const existing = await tx.taxYear.findUnique({
@@ -446,8 +576,8 @@ async function ensureTaxYearStates(tx: DbOrTx, lk: Lookups): Promise<ImportSumma
           entityId,
           year: t.year,
           state: t.state,
-          note:
-            t.state === "FILED" ? "Imported history (Phase 2); marked filed per CLAUDE.md" : null,
+          note: t.state === "FILED" ? note : null,
+          ...(t.state === "FILED" ? stamp : {}),
         },
       });
     } else if (
@@ -457,13 +587,24 @@ async function ensureTaxYearStates(tx: DbOrTx, lk: Lookups): Promise<ImportSumma
       !existing.closedAt
     ) {
       // A filed history year that somehow sits open and untouched: close and file it in one step.
-      await tx.taxYear.update({ where: { id: existing.id }, data: { state: "CLOSED" } });
+      await tx.taxYear.update({
+        where: { id: existing.id },
+        data: { state: "CLOSED", closedAt: now, closedById: actor.userId },
+      });
       await tx.taxYear.update({
         where: { id: existing.id },
         data: {
           state: "FILED",
-          note: existing.note ?? "Imported history (Phase 2); marked filed per CLAUDE.md",
+          filedAt: now,
+          filedById: actor.userId,
+          note: existing.note ?? note,
         },
+      });
+    } else if (t.state === "FILED" && existing.state === "FILED" && !existing.filedAt) {
+      // Seeded as filed without a timestamp: record when the import confirmed it.
+      await tx.taxYear.update({
+        where: { id: existing.id },
+        data: { ...stamp, note: existing.note ?? note },
       });
     }
   }
@@ -489,7 +630,7 @@ async function insertReferenceModels(
       where: { entityId_year: { entityId: srei, year: f.year } },
     });
     if (!taxYear) throw new Error(`No SREI tax year ${f.year} for the ${f.year} reference models.`);
-    const usedNames = new Set<string>();
+    const names = modelNamesFor(f);
     for (const set of f.percentageSets) {
       const sourceKey = `${f.sheet}:${set.key}`;
       const found = await tx.allocationModel.findUnique({ where: { sourceKey } });
@@ -497,16 +638,13 @@ async function insertReferenceModels(
         existing++;
         continue;
       }
-      let name = `${f.year} · ${set.label}`;
-      if (usedNames.has(name)) name = `${name} (${set.key})`;
-      usedNames.add(name);
       const targets = set.targets.filter((t) => t.target !== UMBRELLA_TARGET);
       const { bp, remainderIndex } = sharesToBasisPoints(targets.map((t) => t.share));
       const model = await tx.allocationModel.create({
         data: {
           entityId: srei,
           taxYearId: taxYear.id,
-          name,
+          name: names.get(set.key) as string,
           description: set.description || null,
           isReference: true,
           isActive: true,
@@ -522,23 +660,9 @@ async function insertReferenceModels(
           basis: set.basis,
           secondaryBasis: set.secondaryBasis ?? null,
           note: referenceModelNote(f, set),
+          // The whole transcription of the year, so nothing about the worksheet is lost; thisSetKey says which set this version is.
           parameters: JSON.parse(
-            JSON.stringify({
-              year: f.year,
-              sheet: f.sheet,
-              method: f.method,
-              set,
-              properties: f.properties,
-              landValuation: f.landValuation ?? null,
-              specificBills: f.specificBills.filter((bill) => bill.setKey === set.key),
-              reallocationOfGeneral: f.reallocationOfGeneral
-                ? {
-                    ...f.reallocationOfGeneral,
-                    rows: f.reallocationOfGeneral.rows.filter((r) => r.setKey === set.key),
-                  }
-                : null,
-              other: f.other,
-            }),
+            JSON.stringify({ ...f, thisSetKey: set.key }),
           ) as Prisma.InputJsonValue,
           createdById: actor.userId,
           createdAt: now,
@@ -587,7 +711,10 @@ function baseSummary(
   preB: Check[],
   modelChecks: Check[],
   modelFiles: ReferenceModelFile[],
-  modelVerification: Map<number, { checked: number; mismatches: string[] }>,
+  modelVerification: Map<
+    number,
+    { checked: number; mismatches: string[]; nonEmptyCells: number; accountedFor: number }
+  >,
 ): ImportSummary {
   const kindsByYear: Record<string, Record<string, number>> = {};
   for (const e of a.entries) {
@@ -627,21 +754,20 @@ function baseSummary(
           )}); the seed keeps one Asset account under 1500 Accounts Receivable (decision D5).`,
       );
   for (const c of a.chartRegion) {
-    const s = chart.byNumber.get(c.number);
-    if (!s) continue;
-    const seedType = s.type;
+    const sd = chart.byNumber.get(c.number);
+    if (!sd) continue;
     const wbType = c.type.toUpperCase();
     if (
-      wbType !== seedType &&
-      !(wbType === "EQUITY" && (seedType === "INCOME" || seedType === "EXPENSE"))
+      wbType !== sd.type &&
+      !(wbType === "EQUITY" && (sd.type === "INCOME" || sd.type === "EXPENSE"))
     )
-      differences.push(`${c.number} ${c.name}: workbook type ${c.type}, seed type ${s.type}.`);
-    if (c.subType !== s.subType && seen.get(c.number) === 1)
+      differences.push(`${c.number} ${c.name}: workbook type ${c.type}, seed type ${sd.type}.`);
+    if (c.subType !== sd.subType && seen.get(c.number) === 1)
       differences.push(
-        `${c.number} ${c.name}: workbook sub-type ${c.subType}, seed sub-type ${s.subType}.`,
+        `${c.number} ${c.name}: workbook sub-type ${c.subType}, seed sub-type ${sd.subType}.`,
       );
-    if (c.name !== s.name)
-      differences.push(`${c.number}: workbook name “${c.name}”, seed name “${s.name}”.`);
+    if (c.name !== sd.name)
+      differences.push(`${c.number}: workbook name “${c.name}”, seed name “${sd.name}”.`);
   }
   if (
     a.chartRegion.some(
@@ -655,13 +781,39 @@ function baseSummary(
       "Income and Expense accounts are typed “Equity” in the workbook; the seed types them by sub-type (Income / Expense), as DATA_SOURCES.md prescribes.",
     );
 
+  const merged = a.entries
+    .filter((e) => e.isMerged)
+    .map((e) => {
+      const bankGroup = e.subGroups.find((g) => g.touchesBank);
+      const otherGroups = e.subGroups.filter((g) => !g.touchesBank);
+      return {
+        txn: e.txn,
+        date: e.date,
+        bankVendor: bankGroup?.name ?? "—",
+        bankAmount: money(bankGroup?.totalCents ?? 0n),
+        otherVendor: otherGroups.map((g) => g.name ?? "—").join(" / "),
+        otherAmount: otherGroups.map((g) => money(g.totalCents)).join(" / "),
+        otherAccounts: otherGroups.flatMap((g) => g.accounts).join("; "),
+        rows: `${e.subGroups[0]?.firstRow ?? 0}–${e.subGroups[e.subGroups.length - 1]?.lastRow ?? 0}`,
+      };
+    });
+  const selfCancelling = a.entries
+    .filter((e) => e.isSelfCancelling)
+    .map((e) => ({
+      txn: e.txn,
+      date: e.date,
+      vendor: e.vendor ?? "—",
+      amount: money(e.lines.reduce((t, l) => t + l.debitCents, 0n)),
+      rows: `${e.lines[0]?.row ?? 0}–${e.lines[e.lines.length - 1]?.row ?? 0}`,
+    }));
+
   const attention: ImportSummary["attention"] = [];
   const split = b.rows.filter((r) => r.isSplitPlaceholder);
   attention.push({
     title: "Flagged draft (not posted)",
     items: split.map(
       (r) =>
-        `#${r.ref} ${r.date} ${r.vendor} ${money(r.amountCents)} (${r.className}, ${r.bankRaw}): the snapshot carried it as “(split - varies)” — capitalize vs expense between 1313 and 5215; the full amount sits on 1313 as a flagged draft until Jose itemises the desks and chairs.`,
+        `#${r.ref} ${r.date} ${r.vendor} ${money(r.amountCents)} (${r.className}, ${r.bankRaw}): the snapshot carried it as “(split - varies)” — capitalize vs expense between 1313 and 5215; the full amount sits on 1313 as a flagged draft until Jose itemises the desks and chairs. Until it is confirmed, the PLA bank balance in the app (posted rows only) is ${money(-r.amountCents)} higher than the bank statement, and the row is in no report.`,
     ),
   });
   const openQuestions = b.questionsForJose.filter(
@@ -683,7 +835,7 @@ function baseSummary(
     title: "Same-day identical rows (kept; each carries a system note naming the others)",
     items: groups.map(
       (g) =>
-        `${g.map((r) => `#${r.ref}`).join(", ")}: ${(g[0] as (typeof g)[number]).date} ${money((g[0] as (typeof g)[number]).amountCents)} on ${(g[0] as (typeof g)[number]).bankRaw} — ${[...new Set(g.map((r) => r.vendor))].join(" / ")}`,
+        `snapshot rows ${g.map((r) => `#${r.ref}`).join(", ")}: ${(g[0] as (typeof g)[number]).date} ${money((g[0] as (typeof g)[number]).amountCents)} on ${(g[0] as (typeof g)[number]).bankRaw} — ${[...new Set(g.map((r) => r.vendor))].join(" / ")}`,
     ),
   });
   const refunds = b.rows.filter((r) => r.accountNumber?.startsWith("5") && r.amountCents > 0n);
@@ -691,13 +843,13 @@ function baseSummary(
     title: `Expense accounts with money coming in (${refunds.length} refunds / returns, posted as Dr bank / Cr expense)`,
     items: refunds.map(
       (r) =>
-        `#${r.ref} ${r.date} ${r.vendor} +${money(r.amountCents)} → ${r.accountRaw} (${r.className})`,
+        `snapshot row #${r.ref} ${r.date} ${r.vendor} +${money(r.amountCents)} → ${r.accountRaw} (${r.className})`,
     ),
   });
   attention.push({
     title: "Rows waiting for the allocation-model system (Phase 5)",
     items: [
-      `${unsplit.length} rows are tagged needs_model_split (net ${money(unsplit.reduce((t, r) => t + r.amountCents, 0n))}): ${Object.entries(
+      `${unsplit.length} rows are tagged \`needs_model_split\` (net ${money(unsplit.reduce((t, r) => t + r.amountCents, 0n))}): ${Object.entries(
         unsplitByClass,
       )
         .map(([k, v]) => `${k} ${v}`)
@@ -715,12 +867,8 @@ function baseSummary(
   attention.push({
     title: "2019–2024 entries worth a glance",
     items: [
-      `Entries whose lines carry two dates (rent booked on the 1st, deposited a day or two later): ${
-        a.entries
-          .filter((e) => e.mixedDates)
-          .map((e) => `#${e.txn}`)
-          .join(", ") || "none"
-      } — imported on the earlier date, both dates in the system note.`,
+      `${merged.length} workbook numbers cover two bookings (all 2024): the monthly Clubhouse rent booked as income against a capital distribution (no cash) and, under the same number, whatever hit the bank next. They are kept together to match the workbook; each row shows the bank movement's vendor, date and amount and the rent booking is visible in its journal lines. **Question for Jose and Jamin: split them into two transactions?** The list is below.`,
+      `${selfCancelling.length} entries are a payment and its reversal on the same bank account (net 0.00); they are stored as journal entries so both lines stay visible: ${selfCancelling.map((e) => `#${e.txn} ${e.date} ${e.vendor} ${e.amount}`).join("; ")}.`,
       `Transfer between the old and the current bank account: ${
         a.entries
           .filter((e) => e.bankNumbers.length > 1)
@@ -742,7 +890,7 @@ function baseSummary(
   attention.push({
     title: "Receipts referenced by the snapshot",
     items: [
-      `${b.rows.filter((r) => r.receipts > 0).length} rows expect ${b.rows.reduce((t, r) => t + r.receipts, 0)} receipt files that are not in the workbook (receipt_expected_count is set on each row). Phase 3 uploads and links them.`,
+      `${b.rows.filter((r) => r.receipts > 0).length} rows expect ${b.rows.reduce((t, r) => t + r.receipts, 0)} receipt files that are not in the workbook (\`receipt_expected_count\` is set on each row). Phase 3 uploads and links them.`,
     ],
   });
 
@@ -756,6 +904,7 @@ function baseSummary(
     actorName: opts.actor.displayName,
     outcome: "SUCCEEDED",
     error: null,
+    reportFileWarning: null,
     sources: paths.map((p) => ({
       key: p.key,
       file: p.file,
@@ -775,6 +924,8 @@ function baseSummary(
         mixedDates: a.entries
           .filter((e) => e.mixedDates)
           .map((e) => ({ txn: e.txn, dates: [...new Set(e.lines.map((l) => l.date))].sort() })),
+        merged,
+        selfCancelling,
         normalised: a.lines
           .filter((l) => l.normalised)
           .map((l) => ({
@@ -849,47 +1000,61 @@ function baseSummary(
       inSeedNotWorkbook: [...seedNumbers].filter((n) => !wbNumbers.has(n)).sort(),
       differences,
     },
-    referenceModels: modelFiles.map((f) => ({
-      year: f.year,
-      sheet: f.sheet,
-      method: f.method,
-      verified: modelVerification.get(f.year) ?? { checked: 0, mismatches: [] },
-      models: f.percentageSets.map((set) => {
-        const targets = set.targets.filter((t) => t.target !== UMBRELLA_TARGET);
-        let bp: number[] = [];
-        let remainderIndex = -1;
-        const problems = checkPercentageSet(set);
-        try {
-          const r = sharesToBasisPoints(targets.map((t) => t.share));
-          bp = r.bp;
-          remainderIndex = r.remainderIndex;
-        } catch (err) {
-          problems.push(err instanceof Error ? err.message : String(err));
-        }
-        return {
-          name: `${f.year} · ${set.label}`,
-          key: set.key,
-          basis: set.basis,
-          secondaryBasis: set.secondaryBasis ?? null,
-          description: set.description,
-          targets: targets.map((t, i) => ({
-            label: t.label,
-            target: t.target,
-            weight: t.weight,
-            weight2: t.weight2 ?? null,
-            share: t.share,
-            bp: bp[i] ?? 0,
-            remainder: i === remainderIndex,
-          })),
-          problems,
-        };
-      }),
-      bills: f.specificBills.map((bill) => ({
-        label: bill.label,
-        total: bill.total,
-        setKey: bill.setKey ?? null,
-      })),
-    })),
+    referenceModels: modelFiles.map((f) => {
+      const names = modelNamesFor(f);
+      const v = modelVerification.get(f.year) ?? {
+        checked: 0,
+        mismatches: [],
+        nonEmptyCells: 0,
+        accountedFor: 0,
+      };
+      return {
+        year: f.year,
+        sheet: f.sheet,
+        method: f.method,
+        verified: {
+          checked: v.checked,
+          mismatches: v.mismatches,
+          nonEmptyCells: v.nonEmptyCells,
+          accountedFor: v.accountedFor,
+        },
+        models: f.percentageSets.map((set) => {
+          const targets = set.targets.filter((t) => t.target !== UMBRELLA_TARGET);
+          let bp: number[] = [];
+          let remainderIndex = -1;
+          const problems = checkPercentageSet(set);
+          try {
+            const r = sharesToBasisPoints(targets.map((t) => t.share));
+            bp = r.bp;
+            remainderIndex = r.remainderIndex;
+          } catch (err) {
+            problems.push(err instanceof Error ? err.message : String(err));
+          }
+          return {
+            name: names.get(set.key) as string,
+            key: set.key,
+            basis: set.basis,
+            secondaryBasis: set.secondaryBasis ?? null,
+            description: set.description,
+            targets: targets.map((t, i) => ({
+              label: t.label,
+              target: t.target,
+              weight: t.weight,
+              weight2: t.weight2 ?? null,
+              share: t.share,
+              bp: bp[i] ?? 0,
+              remainder: i === remainderIndex,
+            })),
+            problems,
+          };
+        }),
+        bills: f.specificBills.map((bill) => ({
+          label: bill.label,
+          total: bill.total,
+          setKey: bill.setKey ?? null,
+        })),
+      };
+    }),
     taxYears: [],
   };
 }

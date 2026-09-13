@@ -8,9 +8,11 @@ import { rerunImportAction, type ImportActionState } from "@/server/actions/impo
 export function RerunImportForm({
   canRun,
   filesPresent,
+  sourceDir,
 }: {
   canRun: boolean;
   filesPresent: boolean;
+  sourceDir: string;
 }) {
   const [state, action, pending] = useActionState<ImportActionState, FormData>(
     rerunImportAction,
@@ -35,10 +37,10 @@ export function RerunImportForm({
         </Button>
         <span className="text-muted-foreground text-xs">
           {!filesPresent
-            ? "Put both workbooks in data/source to enable these buttons."
+            ? `One or both workbooks are not in the import folder on this computer (${sourceDir}). Whoever looks after the server can put them there.`
             : !canRun
               ? "Only the Owner or a Full-access user can run the import."
-              : "Safe to press any time: rows already in the ledger are skipped and every number is re-checked. Takes about a minute."}
+              : "Safe to press any time: rows already in the ledger are skipped and every number is re-checked. Takes about ten seconds."}
         </span>
       </div>
       {state.error ? (

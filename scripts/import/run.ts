@@ -2,18 +2,22 @@
  * Historical import from the terminal (Phase 2). Safe to run again and again: rows that are already in
  * the ledger are skipped, so a second run inserts nothing and only re-checks the numbers.
  *
- *   pnpm import:run                 import (writes docs/IMPORT_REPORT.md)
- *   pnpm import:dry-run             read, check and rehearse the load, then roll everything back
- *   pnpm import:run --user you@x    record the run under a specific user (default: the Owner)
- *   pnpm import:run --source-dir D  where the two workbooks live (default: data/source)
- *   pnpm import:run --no-report     do not write docs/IMPORT_REPORT.md
+ *   pnpm import:run --user you@example.com        import; writes docs/IMPORT_REPORT.md when something changed
+ *   pnpm import:dry-run --user you@example.com    read, check and rehearse the load, then roll everything back
+ *   --source-dir /folder                          where the two workbooks live (default: IMPORT_SOURCE_DIR or data/source)
+ *   --allow-filed                                 allow new rows into a closed/filed year other than 2019–2024
+ *   --report always | never                       always write the report file, or never (default: when something changed)
  *
- * Uses the app's restricted database role when APP_DATABASE_URL is set (the same grants the app has).
+ * The run, the audit row and every imported transaction are recorded under --user (an active Owner or
+ * Full-access user), so pass the person who is actually doing it. Uses the app's restricted database
+ * role when APP_DATABASE_URL is set (the same grants the app has).
  */
 import "dotenv/config";
 import path from "node:path";
 import { createPrismaClient, runtimeDatabaseUrl } from "../../src/lib/db";
+import { importSourceDir } from "../../src/lib/import/paths";
 import { runImport } from "../../src/lib/import/run";
+import { checksSentence, checksSummary } from "../../src/lib/import/status";
 
 function arg(name: string): string | null {
   const i = process.argv.indexOf(name);
@@ -24,22 +28,34 @@ function arg(name: string): string | null {
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const noReport = process.argv.includes("--no-report");
-  const sourceDir = arg("--source-dir") ?? path.join(process.cwd(), "data", "source");
+  const allowLockedYears = process.argv.includes("--allow-filed");
+  const reportArg = arg("--report");
+  const sourceDir = arg("--source-dir") ?? importSourceDir();
   const email = arg("--user");
   const db = createPrismaClient(runtimeDatabaseUrl());
   try {
-    const user = email
-      ? await db.user.findUnique({ where: { email: email.trim().toLowerCase() } })
-      : await db.user.findFirst({
-          where: { role: "OWNER", isActive: true },
-          orderBy: { createdAt: "asc" },
-        });
+    const eligible = await db.user.findMany({
+      where: { isActive: true, role: { in: ["OWNER", "FULL"] } },
+      select: { email: true, displayName: true, role: true },
+      orderBy: { email: "asc" },
+    });
+    if (!email) {
+      console.error("Say who is running the import: pnpm import:run --user <email>");
+      console.error(
+        `Active Owner / Full-access users: ${eligible.map((u) => `${u.email} (${u.displayName})`).join(", ") || "none — run the seed first"}.`,
+      );
+      process.exit(1);
+    }
+    const user = await db.user.findUnique({ where: { email: email.trim().toLowerCase() } });
     if (!user) {
       console.error(
-        email
-          ? `No user has the email ${email}.`
-          : "No active Owner user exists yet. Run the seed (pnpm db:seed) or pass --user <email>.",
+        `No user has the email ${email}. Active Owner / Full-access users: ${eligible.map((u) => u.email).join(", ") || "none"}.`,
+      );
+      process.exit(1);
+    }
+    if (!user.isActive || (user.role !== "OWNER" && user.role !== "FULL")) {
+      console.error(
+        `${user.email} cannot run the import: it needs an active Owner or Full-access user (this one is ${user.isActive ? user.role.toLowerCase() : "deactivated"}).`,
       );
       process.exit(1);
     }
@@ -50,6 +66,7 @@ async function main() {
     const outcome = await runImport(db, {
       sourceDir,
       dryRun,
+      allowLockedYears,
       actor: {
         userId: user.id,
         sessionId: null,
@@ -58,28 +75,36 @@ async function main() {
         displayName: user.displayName,
       },
       trigger: "cli",
-      reportPath: noReport ? null : path.join(process.cwd(), "docs", "IMPORT_REPORT.md"),
+      reportPath:
+        reportArg === "never" ? null : path.join(process.cwd(), "docs", "IMPORT_REPORT.md"),
+      reportPolicy: reportArg === "always" ? "always" : "when-changed",
       log: (line) => console.log(line),
     });
     const s = outcome.summary;
     const all = [...s.checks.preA, ...s.checks.preB, ...s.checks.models, ...s.checks.db];
     const failed = all.filter((c) => !c.ok);
+    const summary = checksSummary(s);
     console.log("");
     console.log(
       `${outcome.status}${dryRun ? " (dry run, rolled back)" : ""} in ${((Date.now() - t0) / 1000).toFixed(1)} s — run ${outcome.runId}`,
     );
     console.log(
-      `Inserted: 2019–2024 ${s.load.a.inserted} (skipped ${s.load.a.existing}) · 2025 ${s.load.b.inserted} (skipped ${s.load.b.existing}) · reference models ${s.load.models.inserted} (skipped ${s.load.models.existing})`,
+      `Added: 2019–2024 ${s.load.a.inserted} (already there ${s.load.a.existing}) · 2025 ${s.load.b.inserted} (already there ${s.load.b.existing}) · reference models ${s.load.models.inserted} (already there ${s.load.models.existing})`,
     );
-    console.log(
-      `Checks: ${all.length - failed.length}/${all.length} pass${failed.length ? ` — ${failed.filter((c) => c.critical).length} critical, ${failed.filter((c) => !c.critical).length} informational failures:` : ""}`,
-    );
+    console.log(`Checks: ${summary ? checksSentence(summary) : "—"}${failed.length ? ":" : ""}`);
     for (const c of failed)
       console.log(
         `  ${c.critical ? "❌" : "ℹ️ "} [${c.group}] ${c.label}: expected ${c.expected}, found ${c.actual}${c.note ? ` — ${c.note}` : ""}`,
       );
-    if (!noReport && !dryRun)
-      console.log("Report written to docs/IMPORT_REPORT.md (also shown in Settings → Data).");
+    if (outcome.reportFileWritten)
+      console.log(
+        "Report written to docs/IMPORT_REPORT.md (every run's report is also in Settings → Data).",
+      );
+    else if (!dryRun && outcome.status === "SUCCEEDED")
+      console.log(
+        "Nothing changed, so docs/IMPORT_REPORT.md was left as it is; this run's report is in Settings → Data (pass --report always to write the file anyway).",
+      );
+    if (outcome.reportFileWarning) console.log(`Warning: ${outcome.reportFileWarning}`);
     if (outcome.status === "FAILED") {
       console.error(`\n${s.error ?? "The import stopped."}`);
       process.exit(2);
