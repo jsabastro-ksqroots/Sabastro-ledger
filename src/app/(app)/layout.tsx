@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
           <SidebarNav badges={{ review: 0 }} />
           <div className="text-sidebar-foreground/50 mt-auto px-5 py-4 text-xs">
-            Phase 0 · shell
+            Phase 1 · core ledger
           </div>
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">

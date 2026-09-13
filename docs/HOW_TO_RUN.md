@@ -114,9 +114,11 @@ The data lives in the `.pg` folder inside the project (ignored by git). Everythi
 pnpm test
 ```
 
-runs every unit test (sign-in, MFA, lockout, permissions, audit-log immutability, seeding). It starts its
-own throw-away database, so it needs no setup. `pnpm test:core` runs only the accounting-core tests (the
-"invariant suite" that must stay green). For the browser smoke test (sign in → enrol → dashboard):
+runs every unit test (sign-in, MFA, lockout, permissions, audit-log immutability, seeding, and the
+accounting core: balancing, cross-entity bridge, splits, voids, the closed-year lock, year-end close). It
+starts its own throw-away database, so it needs no setup. `pnpm test:core` runs only the accounting-core
+tests (the "invariant suite" that must stay green). For the browser smoke test (sign in → enrol →
+dashboard → enter a transaction in the ledger → sign out):
 
 ```bash
 pnpm e2e:install
@@ -144,6 +146,7 @@ pnpm test:e2e
 
 - **"command not found: pnpm"** — run `corepack enable` (section 1) and open a new Terminal window.
 - **"Timed out waiting for the database"** — Docker Desktop is not running; open it and retry.
-- **Port 3000 already in use** — another copy is running; press Ctrl-C in that window, or run `pnpm exec next dev -p 3001` and use <http://localhost:3001>.
+- **Port 3000 already in use** — another copy is running; press Ctrl-C in that window, or run `pnpm exec next dev -p 3001` and use <http://localhost:3001>. (On the Phase 0/1 Mac an unrelated program holds the IPv4 side of port 3000; the app still answers at <http://[::1]:3000>.)
+- **"Cannot read properties of undefined (reading 'findMany')" after an update** — the running app still has the old database client in memory. Press Ctrl-C and start it again (`pnpm dev` or `pnpm dev:nodocker`), which also applies any new migration.
 - **Locked out after wrong passwords/codes** — wait 15 minutes, or ask the Owner to unlock you in Settings → Users.
 - **Anything else** — copy the red text from Terminal and paste it into a Claude Code session.

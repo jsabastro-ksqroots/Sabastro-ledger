@@ -45,3 +45,6 @@ yarn-error.log*
 
 # --- generated prisma client ---
 src/generated/
+
+# --- Microsoft Office lock files ---
+~$*

@@ -5,8 +5,9 @@ import { createPrismaClient } from "../../src/lib/db";
 import { hashPassword } from "../../src/lib/auth/password";
 
 /**
- * Login → MFA enrollment → dashboard → sign out. Creates its own user so it never depends on the seed.
- * Needs the dev database from .env (DATABASE_URL, owner role).
+ * Login → MFA enrollment → dashboard → ledger (enter and post a transaction) → sign out. Creates its own
+ * user so it never depends on the seeded users; the ledger step needs the seeded chart, classes and
+ * bank accounts. Needs the dev database from .env (DATABASE_URL, owner role).
  */
 const PASSWORD = "Smoke-Test-Password-1";
 const email = `smoke-${Date.now()}@test.local`;
@@ -52,6 +53,23 @@ test("sign in, enrol an authenticator, reach the dashboard, sign out", async ({ 
 
   await expect(page).toHaveURL(/\/dashboard/);
   await expect(page.getByRole("heading", { name: /Welcome back, Smoke/ })).toBeVisible();
+
+  // Ledger (Phase 1): enter a simple row and see it posted in the grid.
+  await page.getByRole("link", { name: "Ledger" }).click();
+  await expect(page).toHaveURL(/\/ledger/);
+  await page.getByRole("button", { name: "New transaction" }).click();
+  await page.getByLabel("Date").fill("2025-06-15");
+  await page.getByLabel("Vendor / payee").fill(`Smoke Vendor ${Date.now()}`);
+  await page.getByLabel("Amount").fill("-42.10");
+  await page
+    .getByLabel("Account", { exact: true })
+    .selectOption({ label: "5215 Supplies Expense" });
+  await page.getByLabel("Class", { exact: true }).selectOption({ label: "General (shared)" });
+  await page.getByRole("button", { name: "Save and post" }).click();
+  await expect(page.getByRole("cell", { name: /Smoke Vendor/ }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByText("(42.10)").first()).toBeVisible();
 
   await page.getByRole("link", { name: "Settings" }).click();
   await expect(page).toHaveURL(/\/settings\/users/);

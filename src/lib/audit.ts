@@ -37,9 +37,12 @@ export function scrub(value: unknown, depth = 0): unknown {
   return value;
 }
 
-/** Appends one row to the audit log. Call inside the same transaction as the change it describes. */
-export async function audit(tx: DbOrTx, entry: AuditEntry): Promise<void> {
-  await tx.auditLog.create({
+/**
+ * Appends one row to the audit log and returns its id. Call inside the same transaction as the change it
+ * describes; superseded transaction lines store the id of the audit row that replaced them.
+ */
+export async function audit(tx: DbOrTx, entry: AuditEntry): Promise<bigint> {
+  const row = await tx.auditLog.create({
     data: {
       action: entry.action,
       userId: entry.userId ?? null,
@@ -57,5 +60,7 @@ export async function audit(tx: DbOrTx, entry: AuditEntry): Promise<void> {
       ip: entry.ip ?? null,
       userAgent: entry.userAgent ? entry.userAgent.slice(0, 500) : null,
     },
+    select: { id: true },
   });
+  return row.id;
 }

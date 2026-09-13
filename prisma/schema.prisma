@@ -1,5 +1,6 @@
-// Sabastro Ledger — Phase 0 schema: identity, sessions, audit log, organisation, chart, classes, tax years.
-// Ledger tables (transactions, lines, receipts, statements, allocation models) arrive in later phases.
+// Sabastro Ledger schema. Phase 0: identity, sessions, audit log, organisation, chart, classes, tax years.
+// Phase 1: transactions, transaction lines, notes, tax-year checklist, saved views.
+// Receipts, statements and allocation models arrive in later phases.
 // See docs/DESIGN.md for the plain-English description and the database-level rules.
 
 generator client {
@@ -56,6 +57,8 @@ model User {
   recoveryCodes RecoveryCode[]
   sessions      Session[]
   auditEntries  AuditLog[]
+  notes         Note[]
+  savedViews    SavedView[]
 
   @@map("users")
 }
@@ -163,6 +166,8 @@ model Entity {
   taxYears      TaxYear[]
   bridgeAsPayer EntityBridgeRule[] @relation("bridge_payer")
   bridgeAsRecv  EntityBridgeRule[] @relation("bridge_receiver")
+  transactions  Transaction[]
+  lines         TransactionLine[]
 
   @@map("entities")
 }
@@ -189,9 +194,10 @@ model Account {
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  bankAccount     BankAccount?
-  bridgeAsPayer   EntityBridgeRule[] @relation("bridge_payer_account")
-  bridgeAsRecv    EntityBridgeRule[] @relation("bridge_receiver_account")
+  bankAccount   BankAccount?
+  bridgeAsPayer EntityBridgeRule[] @relation("bridge_payer_account")
+  bridgeAsRecv  EntityBridgeRule[] @relation("bridge_receiver_account")
+  lines         TransactionLine[]
 
   @@map("accounts")
 }
@@ -218,6 +224,8 @@ model BankAccount {
 
   entity  Entity  @relation(fields: [entityId], references: [id], onDelete: Restrict)
   account Account @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  transactions Transaction[]
 
   @@index([entityId])
   @@map("bank_accounts")
@@ -246,7 +254,8 @@ model Class {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  entity Entity            @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  lines  TransactionLine[]
 
   @@index([entityId])
   @@map("classes")
@@ -296,7 +305,8 @@ model TaxYear {
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  entity    Entity                 @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  checklist TaxYearChecklistItem[]
 
   @@unique([entityId, year])
   @@map("tax_years")
@@ -313,4 +323,182 @@ model Setting {
 
   @@unique([scope, key])
   @@map("settings")
+}
+
+// ---------------------------------------------------------------------------
+// Ledger (Phase 1) — see docs/DESIGN.md §1 "Ledger", §2–§4
+// ---------------------------------------------------------------------------
+
+enum TransactionStatus {
+  DRAFT
+  FLAGGED
+  POSTED
+  VOIDED
+}
+
+enum TransactionKind {
+  BANK
+  JOURNAL
+  ADJUSTING
+}
+
+enum TransactionSource {
+  IMPORT
+  RECEIPT
+  STATEMENT
+  MANUAL
+}
+
+enum ClassificationSource {
+  IMPORT
+  VENDOR_HISTORY
+  AI
+  HUMAN
+}
+
+/// One journal entry. Never deleted: the app role has no DELETE grant; wrong entries are VOIDED with a reason.
+/// Database rules (hand-written SQL in the migration): per-entity balance over live lines, at least two live
+/// lines unless voided, complete lines when posted, void/posted field requirements, the tax-year lock.
+model Transaction {
+  id                   String                @id @default(uuid()) @db.Uuid
+  /// Human-readable running number shown in the ledger ("#1234").
+  seq                  BigInt                @unique @default(autoincrement())
+  /// Home entity: the bank account's entity, or the entity chosen for a manual journal.
+  entityId             String                @map("entity_id") @db.Uuid
+  date                 DateTime              @db.Date
+  vendor               String?
+  memo                 String?
+  status               TransactionStatus     @default(DRAFT)
+  kind                 TransactionKind       @default(BANK)
+  bankAccountId        String?               @map("bank_account_id") @db.Uuid
+  source               TransactionSource     @default(MANUAL)
+  sourceFile           String?               @map("source_file")
+  sourceRef            String?               @map("source_ref")
+  sourceRef2           String?               @map("source_ref_2")
+  filledInBy           String?               @map("filled_in_by")
+  verifiedByOwner      Boolean               @default(false) @map("verified_by_owner")
+  classificationSource ClassificationSource? @map("classification_source")
+  aiConfidence         Decimal?              @map("ai_confidence") @db.Decimal(4, 3)
+  flags                Json                  @default("[]")
+  needsModelSplit      Boolean               @default(false) @map("needs_model_split")
+  receiptExpectedCount Int                   @default(0) @map("receipt_expected_count")
+  postedAt             DateTime?             @map("posted_at") @db.Timestamptz(6)
+  postedById           String?               @map("posted_by_id") @db.Uuid
+  voidedAt             DateTime?             @map("voided_at") @db.Timestamptz(6)
+  voidedById           String?               @map("voided_by_id") @db.Uuid
+  voidReason           String?               @map("void_reason")
+  createdById          String?               @map("created_by_id") @db.Uuid
+  createdAt            DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedById          String?               @map("updated_by_id") @db.Uuid
+  updatedAt            DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entity      Entity            @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  bankAccount BankAccount?      @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  lines       TransactionLine[]
+  notes       Note[]
+
+  @@index([entityId, date])
+  @@index([date])
+  @@index([status])
+  @@index([bankAccountId])
+  @@index([vendor])
+  @@map("transactions")
+}
+
+/// One side of an entry. A line with superseded_at IS NULL is live. Lines of a posted transaction are never
+/// changed or deleted: splits, unsplits, edits and bridge regeneration supersede the old lines and insert
+/// new ones (docs/DECISIONS.md P0-21). Database rules: debit/credit non-negative and exactly one non-zero;
+/// attribution (bank line → bank's entity; class → class's entity; General → home entity); split children
+/// belong to a superseded parent of the same transaction and sum to it.
+model TransactionLine {
+  id                       String    @id @default(uuid()) @db.Uuid
+  transactionId            String    @map("transaction_id") @db.Uuid
+  lineNo                   Int       @map("line_no")
+  accountId                String?   @map("account_id") @db.Uuid
+  classId                  String?   @map("class_id") @db.Uuid
+  /// The entity this line is attributed to (docs/DESIGN.md §3). Null only on incomplete drafts.
+  entityId                 String?   @map("entity_id") @db.Uuid
+  debitCents               BigInt    @default(0) @map("debit_cents")
+  creditCents              BigInt    @default(0) @map("credit_cents")
+  memo                     String?
+  name                     String?
+  isBridge                 Boolean   @default(false) @map("is_bridge")
+  parentLineId             String?   @map("parent_line_id") @db.Uuid
+  allocationModelVersionId String?   @map("allocation_model_version_id") @db.Uuid
+  allocationTargetId       String?   @map("allocation_target_id") @db.Uuid
+  supersededAt             DateTime? @map("superseded_at") @db.Timestamptz(6)
+  supersededByAuditId      BigInt?   @map("superseded_by_audit_id")
+  sourceRow                Int?      @map("source_row")
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  transaction Transaction       @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  account     Account?          @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  class       Class?            @relation(fields: [classId], references: [id], onDelete: Restrict)
+  entity      Entity?           @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  parentLine  TransactionLine?  @relation("line_parent", fields: [parentLineId], references: [id], onDelete: Restrict)
+  childLines  TransactionLine[] @relation("line_parent")
+
+  @@unique([transactionId, lineNo])
+  @@index([accountId])
+  @@index([classId])
+  @@index([entityId])
+  @@index([parentLineId])
+  @@map("transaction_lines")
+}
+
+enum NoteKind {
+  SYSTEM
+  USER
+}
+
+/// System notes (AI reasoning, matching results, model applications) are append-only — a trigger blocks
+/// UPDATE and DELETE. A transaction has at most one user note (partial unique index), edited with an audit row.
+model Note {
+  id            String   @id @default(uuid()) @db.Uuid
+  transactionId String?  @map("transaction_id") @db.Uuid
+  receiptId     String?  @map("receipt_id") @db.Uuid
+  kind          NoteKind
+  body          String
+  createdById   String?  @map("created_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedById   String?  @map("updated_by_id") @db.Uuid
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  createdBy   User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([transactionId, kind, createdAt])
+  @@map("notes")
+}
+
+/// The year-end gate. One row per item once it has been ticked or overridden; items with no row are open.
+model TaxYearChecklistItem {
+  id             String    @id @default(uuid()) @db.Uuid
+  taxYearId      String    @map("tax_year_id") @db.Uuid
+  itemKey        String    @map("item_key")
+  doneAt         DateTime? @map("done_at") @db.Timestamptz(6)
+  doneById       String?   @map("done_by_id") @db.Uuid
+  overrideReason String?   @map("override_reason")
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  taxYear TaxYear @relation(fields: [taxYearId], references: [id], onDelete: Cascade)
+
+  @@unique([taxYearId, itemKey])
+  @@map("tax_year_checklist")
+}
+
+/// A named set of filters / sort / columns for a data grid, private to the user who saved it.
+model SavedView {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  page      String
+  name      String
+  state     Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, page, name])
+  @@map("saved_views")
 }
