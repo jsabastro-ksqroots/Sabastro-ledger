@@ -4,8 +4,7 @@ Read this after `CLAUDE.md` at the start of every session. Write to it last.
 
 ## Where we are
 
-**Phase 0 (orientation, design, scaffold, auth, app shell) — DONE on 2026-09-12**, except the push to
-GitHub, which needs a human to create the repository first (see "Blocked").
+**Phase 0 (orientation, design, scaffold, auth, app shell) — DONE and pushed on 2026-09-12.**
 
 Next session: **Phase 1 — core ledger.** Paste the Phase 1 prompt from `KICKOFF_PROMPTS.md`.
 
@@ -70,18 +69,9 @@ Anywhere else: follow `docs/HOW_TO_RUN.md`.
 
 ## Blocked / needs a human
 
-- **GitHub push.** No repository exists and there is no `gh` CLI or token here. The SSH key on this Mac
-  belongs to the GitHub account `jsabastro-ksqroots`. Create a **private** repository named
-  `sabastro-ledger` under that account (github.com → New repository → Private, no README), then in the
-  project folder run:
-
-  ```bash
-  git push -u origin main
-  ```
-
-  (the remote is already configured). If the repo should live under a different account, run
-  `git remote set-url origin git@github.com:<account>/sabastro-ledger.git` first.
-
+- ~~GitHub push~~ **Done 2026-09-12:** the private repository
+  `git@github.com:jsabastro-ksqroots/sabastro-ledger.git` exists and `main` is pushed. Every phase ends
+  with `git push`.
 - **Docker Desktop** is not installed on this Mac (needs an admin password); the embedded Postgres
   fallback is used instead. `docs/HOW_TO_RUN.md` section 1 explains the normal install.
 - The project folder sits inside Google Drive; moving it to `~/Projects/sabastro-ledger` is recommended.
