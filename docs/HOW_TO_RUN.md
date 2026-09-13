@@ -132,7 +132,38 @@ pnpm test:e2e
 
 (it starts the app on port 3100 and uses the database in `.env`).
 
-## 8. Useful commands
+## 8. Importing the historical books (Phase 2)
+
+The 2019–2024 and 2025 books come from two private Excel workbooks that are **not** in git. Put them in
+the `data/source` folder inside the project, with exactly these names (see `DATA_SOURCES.md`):
+
+- `2019-2024_SREI_general-ledger_and_tax-worksheets.xlsx`
+- `2025_SREI-PLA_general-ledger_final-review-snapshot_2026-09-10.xlsx`
+
+Then, with the database running (`pnpm dev` or `pnpm dev:nodocker` in another window is fine):
+
+```bash
+pnpm import:dry-run
+```
+
+reads both files, checks every number against the acceptance list in `DATA_SOURCES.md`, rehearses the
+whole load and rolls it back. Nothing changes. When it says `SUCCEEDED` and "0 critical" failures:
+
+```bash
+pnpm import:run
+```
+
+does it for real (about ten seconds) and writes `docs/IMPORT_REPORT.md`. You can run it as often as you
+like: rows that are already in the ledger are skipped, so a second run inserts nothing and only re-checks.
+The same two buttons live in **Settings → Data** in the app (Owner or Full access), together with the
+list of runs and the report.
+
+If a number does not tie, the import stops, writes nothing, and the report (and the Terminal) show the
+expected and actual values side by side. Fix the cause (usually a missing account or class in
+Settings) and run again. `pnpm import:run --user you@example.com` records the run under a specific user;
+`--source-dir /some/folder` reads the workbooks from elsewhere (or set `IMPORT_SOURCE_DIR` in `.env`).
+
+## 9. Useful commands
 
 | Command                        | What it does                                                                                 |
 | ------------------------------ | -------------------------------------------------------------------------------------------- |
@@ -140,13 +171,16 @@ pnpm test:e2e
 | `pnpm db:seed`                 | re-runs the seed; safe to repeat, never overwrites edits                                     |
 | `pnpm db:studio`               | opens Prisma Studio, a table viewer for the database                                         |
 | `pnpm db:recreate`             | **wipes the local database** and rebuilds it (development only; refuses non-local databases) |
+| `pnpm import:dry-run`          | reads the two source workbooks, checks every number, rehearses the load, changes nothing     |
+| `pnpm import:run`              | imports the historical books (safe to repeat; writes `docs/IMPORT_REPORT.md`)                |
 | `pnpm lint` / `pnpm typecheck` | code checks Claude Code runs before every commit                                             |
 
-## 9. If something goes wrong
+## 10. If something goes wrong
 
 - **"command not found: pnpm"** — run `corepack enable` (section 1) and open a new Terminal window.
 - **"Timed out waiting for the database"** — Docker Desktop is not running; open it and retry.
 - **Port 3000 already in use** — another copy is running; press Ctrl-C in that window, or run `pnpm exec next dev -p 3001` and use <http://localhost:3001>. (On the Phase 0/1 Mac an unrelated program holds the IPv4 side of port 3000; the app still answers at <http://[::1]:3000>.)
 - **"Cannot read properties of undefined (reading 'findMany')" after an update** — the running app still has the old database client in memory. Press Ctrl-C and start it again (`pnpm dev` or `pnpm dev:nodocker`), which also applies any new migration.
+- **"The import stopped … does not tie"** — nothing was written. The report in Settings → Data (or the Terminal output) names the number that differs; the usual cause is an account or class missing from Settings. Fix it and run the import again.
 - **Locked out after wrong passwords/codes** — wait 15 minutes, or ask the Owner to unlock you in Settings → Users.
 - **Anything else** — copy the red text from Terminal and paste it into a Claude Code session.

@@ -10,8 +10,9 @@ const TABS = [
   { href: "/settings/entities", label: "Entities & bank accounts" },
   { href: "/settings/accounts", label: "Chart of accounts" },
   { href: "/settings/classes", label: "Classes" },
+  { href: "/settings/data", label: "Data" },
 ];
-const LATER = ["AI", "Models", "Tax mapping", "Data"];
+const LATER = ["AI", "Models", "Tax mapping"];
 
 export function SettingsTabs() {
   const pathname = usePathname();

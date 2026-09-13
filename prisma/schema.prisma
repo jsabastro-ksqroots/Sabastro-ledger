@@ -1,6 +1,8 @@
 // Sabastro Ledger schema. Phase 0: identity, sessions, audit log, organisation, chart, classes, tax years.
 // Phase 1: transactions, transaction lines, notes, tax-year checklist, saved views.
-// Receipts, statements and allocation models arrive in later phases.
+// Phase 2: import runs and the allocation-model tables (models, immutable versions, targets) that hold the
+//          archived 2020–2024 reference models; Phase 5 builds the live model system on the same tables.
+// Receipts and statements arrive in later phases.
 // See docs/DESIGN.md for the plain-English description and the database-level rules.
 
 generator client {
@@ -161,13 +163,14 @@ model Entity {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  bankAccounts  BankAccount[]
-  classes       Class[]
-  taxYears      TaxYear[]
-  bridgeAsPayer EntityBridgeRule[] @relation("bridge_payer")
-  bridgeAsRecv  EntityBridgeRule[] @relation("bridge_receiver")
-  transactions  Transaction[]
-  lines         TransactionLine[]
+  bankAccounts     BankAccount[]
+  classes          Class[]
+  taxYears         TaxYear[]
+  bridgeAsPayer    EntityBridgeRule[] @relation("bridge_payer")
+  bridgeAsRecv     EntityBridgeRule[] @relation("bridge_receiver")
+  transactions     Transaction[]
+  lines            TransactionLine[]
+  allocationModels AllocationModel[]
 
   @@map("entities")
 }
@@ -254,8 +257,9 @@ model Class {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  entity Entity            @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  lines  TransactionLine[]
+  entity            Entity             @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  lines             TransactionLine[]
+  allocationTargets AllocationTarget[]
 
   @@index([entityId])
   @@map("classes")
@@ -305,8 +309,9 @@ model TaxYear {
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  entity    Entity                 @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  checklist TaxYearChecklistItem[]
+  entity           Entity                 @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  checklist        TaxYearChecklistItem[]
+  allocationModels AllocationModel[]
 
   @@unique([entityId, year])
   @@map("tax_years")
@@ -431,12 +436,14 @@ model TransactionLine {
   sourceRow                Int?      @map("source_row")
   createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  transaction Transaction       @relation(fields: [transactionId], references: [id], onDelete: Restrict)
-  account     Account?          @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  class       Class?            @relation(fields: [classId], references: [id], onDelete: Restrict)
-  entity      Entity?           @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  parentLine  TransactionLine?  @relation("line_parent", fields: [parentLineId], references: [id], onDelete: Restrict)
-  childLines  TransactionLine[] @relation("line_parent")
+  transaction            Transaction             @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  account                Account?                @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  class                  Class?                  @relation(fields: [classId], references: [id], onDelete: Restrict)
+  entity                 Entity?                 @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  parentLine             TransactionLine?        @relation("line_parent", fields: [parentLineId], references: [id], onDelete: Restrict)
+  childLines             TransactionLine[]       @relation("line_parent")
+  allocationModelVersion AllocationModelVersion? @relation(fields: [allocationModelVersionId], references: [id], onDelete: Restrict)
+  allocationTarget       AllocationTarget?       @relation(fields: [allocationTargetId], references: [id], onDelete: Restrict)
 
   @@unique([transactionId, lineNo])
   @@index([accountId])
@@ -501,4 +508,126 @@ model SavedView {
 
   @@unique([userId, page, name])
   @@map("saved_views")
+}
+
+// ---------------------------------------------------------------------------
+// Import runs (Phase 2) — what was imported, when, by whom, and the report
+// ---------------------------------------------------------------------------
+
+enum ImportRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+/// One row per run of the historical import (terminal command or Settings → Data). Never deleted by the
+/// app role. `summary` holds the counts and the acceptance checks; `report_markdown` is the import report
+/// the Settings → Data tab shows (the same text is written to docs/IMPORT_REPORT.md).
+model ImportRun {
+  id              String          @id @default(uuid()) @db.Uuid
+  startedAt       DateTime        @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt      DateTime?       @map("finished_at") @db.Timestamptz(6)
+  status          ImportRunStatus @default(RUNNING)
+  dryRun          Boolean         @default(false) @map("dry_run")
+  trigger         String
+  runById         String?         @map("run_by_id") @db.Uuid
+  sources         Json
+  summary         Json?
+  allChecksPassed Boolean?        @map("all_checks_passed")
+  reportMarkdown  String?         @map("report_markdown")
+  error           String?
+
+  @@index([startedAt])
+  @@map("import_runs")
+}
+
+// ---------------------------------------------------------------------------
+// Allocation models (docs/DESIGN.md §1 "Allocation models", §5) — Phase 2 stores the archived
+// 2020–2024 worksheet models as read-only reference models; Phase 5 adds the builder, rules and
+// applications on the same tables.
+// ---------------------------------------------------------------------------
+
+enum AllocationBasis {
+  PERCENT
+  VALUE
+  ACRES
+  MONTHS
+  COUNT
+}
+
+/// One entity's recipe for splitting shared costs in one tax year. The "applied" state lives here
+/// because versions are immutable.
+model AllocationModel {
+  id               String    @id @default(uuid()) @db.Uuid
+  entityId         String    @map("entity_id") @db.Uuid
+  taxYearId        String    @map("tax_year_id") @db.Uuid
+  name             String
+  description      String?
+  /// True for the archived 2020–2024 worksheet models: documentation only, never applied.
+  isReference      Boolean   @default(false) @map("is_reference")
+  isActive         Boolean   @default(true) @map("is_active")
+  /// Import idempotency key for reference models ("2024 Tax Worksheet:pct_all"); null for user-made models.
+  sourceKey        String?   @unique @map("source_key")
+  currentVersionId String?   @map("current_version_id") @db.Uuid
+  appliedVersionId String?   @map("applied_version_id") @db.Uuid
+  appliedAt        DateTime? @map("applied_at") @db.Timestamptz(6)
+  appliedById      String?   @map("applied_by_id") @db.Uuid
+  createdById      String?   @map("created_by_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  entity   Entity                   @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  taxYear  TaxYear                  @relation(fields: [taxYearId], references: [id], onDelete: Restrict)
+  versions AllocationModelVersion[]
+
+  @@unique([taxYearId, name])
+  @@index([entityId])
+  @@map("allocation_models")
+}
+
+/// Immutable once written (database trigger). One basis per version so shares are comparable;
+/// `parameters` keeps the raw worksheet inputs of a reference model (values, acres, bill totals, notes).
+model AllocationModelVersion {
+  id                    String           @id @default(uuid()) @db.Uuid
+  modelId               String           @map("model_id") @db.Uuid
+  versionNo             Int              @map("version_no")
+  basis                 AllocationBasis
+  secondaryBasis        AllocationBasis? @map("secondary_basis")
+  note                  String?
+  diff                  Json?
+  parameters            Json?
+  revertedFromVersionId String?          @map("reverted_from_version_id") @db.Uuid
+  createdById           String?          @map("created_by_id") @db.Uuid
+  createdAt             DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  model   AllocationModel    @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  targets AllocationTarget[]
+  lines   TransactionLine[]
+
+  @@unique([modelId, versionNo])
+  @@map("allocation_model_versions")
+}
+
+/// One target of a version: a class, or the special Personal target (class null → posts to 3102, class
+/// General). Database rules: per version Σ share_bp = 10,000 and exactly one remainder target.
+model AllocationTarget {
+  id                String   @id @default(uuid()) @db.Uuid
+  versionId         String   @map("version_id") @db.Uuid
+  classId           String?  @map("class_id") @db.Uuid
+  isPersonal        Boolean  @default(false) @map("is_personal")
+  /// The worksheet's own label for the target ("The Club House", "Our House").
+  label             String
+  weight            Decimal  @db.Decimal(18, 6)
+  weight2           Decimal? @map("weight_2") @db.Decimal(18, 6)
+  shareBp           Int      @map("share_bp")
+  isRemainderTarget Boolean  @default(false) @map("is_remainder_target")
+  sortOrder         Int      @default(0) @map("sort_order")
+
+  version AllocationModelVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  class   Class?                 @relation(fields: [classId], references: [id], onDelete: Restrict)
+  lines   TransactionLine[]
+
+  @@index([versionId])
+  @@index([classId])
+  @@map("allocation_targets")
 }

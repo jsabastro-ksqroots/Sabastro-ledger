@@ -1,0 +1,983 @@
+{
+  "year": 2021,
+  "sheet": "2021 Tax Worksheet",
+  "method": "For 2021 Jose valued the whole 13 Chisel Creek property at $1,100,000 and assigned $225,000 of it to The Shed and $375,000 to The Clubhouse, leaving $500,000 for the raw land. That $500,000 was explained as 5 buildable lots at $75,000 each ($375,000) plus the remaining 92 acres at a back-solved $1,358.70 per acre ($125,000). Each piece of the property (Shed, Clubhouse, the Land to Develop, and Jose's own house) was given a lot count and an acreage (2.2 / 15 / 72 / 20 acres, 109.2 in all), and the values of the developable land ($397,826) and the house ($102,174) fall out of those lot and acre prices. From this the sheet builds five percentage columns. '% of Land Expenses' splits by acres (Shed 2.0%, Clubhouse 13.7%, Land 65.9%, House 18.3%) and is meant for ground costs such as mowing. '% of Other Expenses' splits by value (20.5% / 34.1% / 36.2% / 9.3%) for costs like insurance that follow what the buildings are worth. 'Expenses with no Shed' is the same value split over just the Clubhouse, the Land and the House, rounded to whole percents (43% / 45% / 12%). 'Expenses with all' spreads a cost across all seven properties by value, bringing in the three rentals owned by then (142 Maloney $258,250, 176 Tulsk $285,000, 544 Liberty $284,000), rounded to whole percents (12/19/21/5/13/15/15). 'Expenses with no personal house' does the same over the six business properties only, unrounded. In every set the 'Our House' share is Jose's personal share, which the books record as a capital distribution (3102), not as a business expense. This sheet does not itself allocate any specific bill; the percentages were applied when the 2021 entries were split in the ledger. The rest of the tab is reference material: cost-basis breakdowns (building / land / fixtures) for the Clubhouse, the Shed and 142 Maloney, the closing statements and cost-basis breakdowns for the two 2021 purchases (176 Tulsk and 544 Liberty), and a 'readjusted' copy of the acreage table (Land 62 acres / House 30 acres) with a 2022 reassessment of the 1625 parcel split personal-vs-business, which a note says should be used for 2022.",
+  "properties": [
+    {
+      "label": "The Shed",
+      "labelCell": "D6",
+      "target": "Rentals:The Shed",
+      "lots": 1,
+      "lotsCell": "B6",
+      "acres": 2.2,
+      "acresCell": "C6",
+      "value": 225000.0,
+      "valueCell": "E6",
+      "landValue": 77989.13,
+      "landValueCell": "F6",
+      "buildAndFurnishingsValue": 147010.87,
+      "buildAndFurnishingsValueCell": "G6",
+      "note": ""
+    },
+    {
+      "label": "The Club House",
+      "labelCell": "D7",
+      "target": "Rentals:The Clubhouse",
+      "lots": 1,
+      "lotsCell": "B7",
+      "acres": 15,
+      "acresCell": "C7",
+      "value": 375000.0,
+      "valueCell": "E7",
+      "landValue": 95380.43,
+      "landValueCell": "F7",
+      "buildAndFurnishingsValue": 279619.57,
+      "buildAndFurnishingsValueCell": "G7",
+      "note": ""
+    },
+    {
+      "label": "The Land to Develop",
+      "labelCell": "D8",
+      "target": "Land Development:13 Chisel Creek Dr",
+      "lots": 4,
+      "lotsCell": "B8",
+      "acres": 72,
+      "acresCell": "C8",
+      "value": 397826.09,
+      "valueCell": "E8",
+      "landValue": 397826.09,
+      "landValueCell": "F8",
+      "buildAndFurnishingsValue": 0.0,
+      "buildAndFurnishingsValueCell": "G8",
+      "note": "Acres C8 is a formula: 107 - C7 - C9 (the Chisel Creek parcel is taken as 107 acres excluding the Shed's 2.2). Value E8 = 4 lots x 75,000 + 72 acres x 1,358.70."
+    },
+    {
+      "label": "Our House",
+      "labelCell": "D9",
+      "target": "PERSONAL",
+      "lots": 1,
+      "lotsCell": "B9",
+      "acres": 20,
+      "acresCell": "C9",
+      "value": 102173.91,
+      "valueCell": "E9",
+      "landValue": 102173.91,
+      "landValueCell": "F9",
+      "buildAndFurnishingsValue": 0.0,
+      "buildAndFurnishingsValueCell": "G9",
+      "note": "Jose's personal house. Value E9 = 1 lot x 75,000 + 20 acres x 1,358.70. Its share in every set is personal (3102 Capital Distribution)."
+    },
+    {
+      "label": "142 Maloney",
+      "labelCell": "D12",
+      "target": "Rentals:142 Maloney Terrace",
+      "lots": null,
+      "lotsCell": null,
+      "acres": null,
+      "acresCell": null,
+      "value": 258250.0,
+      "valueCell": "E12",
+      "landValue": null,
+      "landValueCell": null,
+      "buildAndFurnishingsValue": null,
+      "buildAndFurnishingsValueCell": null,
+      "note": "E12 = C42, the total of the 142 Maloney cost-basis breakdown (B38:D42)."
+    },
+    {
+      "label": "176 Tulsk",
+      "labelCell": "D13",
+      "target": "Rentals:176 Tulsk Road",
+      "lots": null,
+      "lotsCell": null,
+      "acres": null,
+      "acresCell": null,
+      "value": 285000.0,
+      "valueCell": "E13",
+      "landValue": null,
+      "landValueCell": null,
+      "buildAndFurnishingsValue": null,
+      "buildAndFurnishingsValueCell": null,
+      "note": "E13 = G40, the 176 Tulsk purchase price (bought 2021; closing detail in F17:H60)."
+    },
+    {
+      "label": "544 Liberty",
+      "labelCell": "D14",
+      "target": "Rentals:544 Liberty Circle",
+      "lots": null,
+      "lotsCell": null,
+      "acres": null,
+      "acresCell": null,
+      "value": 284000.0,
+      "valueCell": "E14",
+      "landValue": null,
+      "landValueCell": null,
+      "buildAndFurnishingsValue": null,
+      "buildAndFurnishingsValueCell": null,
+      "note": "E14 = K41, the 544 Liberty purchase price (bought 2021; closing detail in J17:L60)."
+    }
+  ],
+  "landValuation": {
+    "perLot": 75000,
+    "perLotCell": "C2",
+    "lots": 5,
+    "lotsCell": "D2",
+    "lotsValue": 375000.0,
+    "lotsValueCell": "E2",
+    "perAcre": 1358.695652,
+    "perAcreCell": "C3",
+    "acres": 92,
+    "acresCell": "D3",
+    "acresValue": 125000.0,
+    "acresValueCell": "E3",
+    "total": 500000.0,
+    "totalCell": "E4",
+    "labelCells": ["B2", "B3"],
+    "note": "The raw-land value is back-solved: E4 = E10 (1,100,000 whole Chisel Creek) - E6 (Shed 225,000) - E7 (Clubhouse 375,000) = 500,000. Five buildable lots at 75,000 = 375,000 (E2); the per-acre price C3 = (500,000 - 375,000) / 92 acres (D3 = C8 + C9, the acres of the Land to Develop plus Our House)."
+  },
+  "percentageSets": [
+    {
+      "key": "pct_land_expenses",
+      "label": "% of Land Expenses",
+      "headerCell": "H5",
+      "basis": "ACRES",
+      "secondaryBasis": null,
+      "description": "Shed, Clubhouse, Land to Develop and Our House weighted by acres (C6:C9); for ground-related costs such as mowing.",
+      "cellRange": "H6:H9",
+      "totalCell": "H10",
+      "total": 1,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 2.2,
+          "weightCell": "C6",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.020147,
+          "shareCell": "H6"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 15.0,
+          "weightCell": "C7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.137363,
+          "shareCell": "H7"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 72.0,
+          "weightCell": "C8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.659341,
+          "shareCell": "H8"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 20.0,
+          "weightCell": "C9",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.18315,
+          "shareCell": "H9"
+        }
+      ],
+      "usedFor": [
+        "Not referenced by any other cell on this sheet; applied when the 2021 ledger entries were split."
+      ]
+    },
+    {
+      "key": "pct_other_expenses",
+      "label": "% of Other Expenses",
+      "headerCell": "I5",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "Shed, Clubhouse, Land to Develop and Our House weighted by assigned total value (E6:E9 over E10 = 1,100,000); I9 is written as 1 - SUM(I6:I8) but equals E9/E10.",
+      "cellRange": "I6:I9",
+      "totalCell": "I10",
+      "total": 1,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 225000.0,
+          "weightCell": "E6",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.204545,
+          "shareCell": "I6"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 375000.0,
+          "weightCell": "E7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.340909,
+          "shareCell": "I7"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 397826.086957,
+          "weightCell": "E8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.36166,
+          "shareCell": "I8"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 102173.913043,
+          "weightCell": "E9",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.092885,
+          "shareCell": "I9"
+        }
+      ],
+      "usedFor": [
+        "Not referenced by any other cell on this sheet; applied when the 2021 ledger entries were split."
+      ]
+    },
+    {
+      "key": "pct_no_shed",
+      "label": "Expenses with no Shed",
+      "headerCell": "J5",
+      "basis": "PERCENT",
+      "secondaryBasis": null,
+      "roundedTo": 2,
+      "description": "Keyed as PERCENT because the sheet ROUNDS these shares to whole percents (ROUND(E/SUM($E$7:$E$9),2)), so share is not exactly value/sum; the underlying value weights are kept in valueWeight/valueWeightCell. Clubhouse, Land to Develop and Our House weighted by value (E7:E9 over their sum 875,000), ROUNDED to whole percents by the sheet (ROUND(E/SUM(E7:E9),2)); exact unrounded shares would be 0.428571 / 0.454658 / 0.116770.",
+      "cellRange": "J7:J9",
+      "totalCell": "J10",
+      "total": 1,
+      "targets": [
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 0.43,
+          "weightCell": "J7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.43,
+          "shareCell": "J7",
+          "valueWeight": 375000.0,
+          "valueWeightCell": "E7"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 0.45,
+          "weightCell": "J8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.45,
+          "shareCell": "J8",
+          "valueWeight": 397826.086957,
+          "valueWeightCell": "E8"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 0.12,
+          "weightCell": "J9",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.12,
+          "shareCell": "J9",
+          "valueWeight": 102173.913043,
+          "valueWeightCell": "E9"
+        }
+      ],
+      "usedFor": [
+        "Not referenced by any other cell on this sheet; applied when the 2021 ledger entries were split."
+      ],
+      "derivedFrom": "VALUE"
+    },
+    {
+      "key": "pct_all",
+      "label": "Expenses with all",
+      "headerCell": "K5",
+      "basis": "PERCENT",
+      "secondaryBasis": null,
+      "roundedTo": 2,
+      "description": "Keyed as PERCENT because the sheet ROUNDS these shares to whole percents (ROUND(E/$E$15,2)), so share is not exactly value/sum; the underlying value weights are kept in valueWeight/valueWeightCell. All seven properties weighted by value (E6:E9 and E12:E14 over E15 = 1,927,250), ROUNDED to whole percents by the sheet (ROUND(E/E15,2)); the rounded column happens to sum to exactly 1.00.",
+      "cellRange": "K6:K9,K12:K14",
+      "totalCell": null,
+      "total": null,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 0.12,
+          "weightCell": "K6",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.12,
+          "shareCell": "K6",
+          "valueWeight": 225000.0,
+          "valueWeightCell": "E6"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 0.19,
+          "weightCell": "K7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.19,
+          "shareCell": "K7",
+          "valueWeight": 375000.0,
+          "valueWeightCell": "E7"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 0.21,
+          "weightCell": "K8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.21,
+          "shareCell": "K8",
+          "valueWeight": 397826.086957,
+          "valueWeightCell": "E8"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 0.05,
+          "weightCell": "K9",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.05,
+          "shareCell": "K9",
+          "valueWeight": 102173.913043,
+          "valueWeightCell": "E9"
+        },
+        {
+          "label": "142 Maloney",
+          "target": "Rentals:142 Maloney Terrace",
+          "weight": 0.13,
+          "weightCell": "K12",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.13,
+          "shareCell": "K12",
+          "valueWeight": 258250.0,
+          "valueWeightCell": "E12"
+        },
+        {
+          "label": "176 Tulsk",
+          "target": "Rentals:176 Tulsk Road",
+          "weight": 0.15,
+          "weightCell": "K13",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.15,
+          "shareCell": "K13",
+          "valueWeight": 285000.0,
+          "valueWeightCell": "E13"
+        },
+        {
+          "label": "544 Liberty",
+          "target": "Rentals:544 Liberty Circle",
+          "weight": 0.15,
+          "weightCell": "K14",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.15,
+          "shareCell": "K14",
+          "valueWeight": 284000.0,
+          "valueWeightCell": "E14"
+        }
+      ],
+      "usedFor": [
+        "Not referenced by any other cell on this sheet; applied when the 2021 ledger entries were split."
+      ],
+      "derivedFrom": "VALUE"
+    },
+    {
+      "key": "pct_no_house",
+      "label": "Expenses with no personal house",
+      "headerCell": "L5",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "The six business properties (Shed, Clubhouse, Land to Develop, 142 Maloney, 176 Tulsk, 544 Liberty) weighted by value; Our House excluded. Unrounded.",
+      "cellRange": "L6:L8,L12:L14",
+      "totalCell": null,
+      "total": null,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 225000.0,
+          "weightCell": "E6",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.123283,
+          "shareCell": "L6"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 375000.0,
+          "weightCell": "E7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.205471,
+          "shareCell": "L7"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 397826.086957,
+          "weightCell": "E8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.217978,
+          "shareCell": "L8"
+        },
+        {
+          "label": "142 Maloney",
+          "target": "Rentals:142 Maloney Terrace",
+          "weight": 258250.0,
+          "weightCell": "E12",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.141501,
+          "shareCell": "L12"
+        },
+        {
+          "label": "176 Tulsk",
+          "target": "Rentals:176 Tulsk Road",
+          "weight": 285000.0,
+          "weightCell": "E13",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.156158,
+          "shareCell": "L13"
+        },
+        {
+          "label": "544 Liberty",
+          "target": "Rentals:544 Liberty Circle",
+          "weight": 284000.0,
+          "weightCell": "E14",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.15561,
+          "shareCell": "L14"
+        }
+      ],
+      "usedFor": [
+        "Not referenced by any other cell on this sheet; applied when the 2021 ledger entries were split."
+      ]
+    },
+    {
+      "key": "pct_land_expenses_readjusted",
+      "label": "% of Land Expenses",
+      "headerCell": "T17",
+      "basis": "ACRES",
+      "secondaryBasis": null,
+      "description": "Readjusted-for-2022 copy of pct_land_expenses (same header text as H5, in the second table headed by note N15) using the corrected acreages in O18:O21 (Land to Develop 62 ac, Our House 30 ac instead of 72 / 20). Note N15 says this table is what should be used for 2022.",
+      "cellRange": "T18:T21",
+      "totalCell": "T22",
+      "total": 1,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 2.2,
+          "weightCell": "O18",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.020147,
+          "shareCell": "T18"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 15.0,
+          "weightCell": "O19",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.137363,
+          "shareCell": "T19"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 62.0,
+          "weightCell": "O20",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.567766,
+          "shareCell": "T20"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 30.0,
+          "weightCell": "O21",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.274725,
+          "shareCell": "T21"
+        }
+      ],
+      "usedFor": [
+        "T21 (Our House 27.47%) is the personal share applied to the 2022 land assessment in R31 (see other: 2022 assessment)."
+      ]
+    },
+    {
+      "key": "pct_other_expenses_readjusted",
+      "label": "% of Other Expenses",
+      "headerCell": "U17",
+      "basis": "PERCENT",
+      "secondaryBasis": null,
+      "consistent": false,
+      "description": "Keyed as PERCENT because the sheet's shares are not value/sum of this table: U18:U20 = Q/$E$10 (denominator 1,100,000 from the ORIGINAL table) and U21 = 1 - SUM(U18:U20); the table's own Q values (two of them 0) are kept in valueWeight/valueWeightCell. Readjusted-for-2022 copy of pct_other_expenses (same header text as I5, in the second table headed by note N15). The sheet divides Q18:Q20 by the ORIGINAL total E10 = 1,100,000 and plugs Our House as 1 - SUM(U18:U20). Because Q20 and Q21 are 0 (their formulas point at empty per-lot / per-acre cells O14:O15), the Land to Develop gets 0% and Our House absorbs 45.45% (implied weight 500,000 = 1,100,000 - 225,000 - 375,000). share != weight / sum(weights) for this set; it is a half-updated table, transcribed as-is.",
+      "cellRange": "U18:U21",
+      "totalCell": "U22",
+      "total": 1,
+      "denominatorCell": "E10",
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 0.204545,
+          "weightCell": "U18",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.204545,
+          "shareCell": "U18",
+          "valueWeight": 225000.0,
+          "valueWeightCell": "Q18"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 0.340909,
+          "weightCell": "U19",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.340909,
+          "shareCell": "U19",
+          "valueWeight": 375000.0,
+          "valueWeightCell": "Q19"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 0.0,
+          "weightCell": "U20",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.0,
+          "shareCell": "U20",
+          "valueWeight": 0.0,
+          "valueWeightCell": "Q20"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 0.454545,
+          "weightCell": "U21",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.454545,
+          "shareCell": "U21",
+          "valueWeight": 0.0,
+          "valueWeightCell": "Q21"
+        }
+      ],
+      "usedFor": ["Not referenced by any other cell on this sheet."],
+      "derivedFrom": "VALUE"
+    },
+    {
+      "key": "pct_house_vs_clubhouse",
+      "label": "Value of our House / Value of Club House",
+      "headerCell": null,
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "Building-value split between Jose's house (1,500,000) and the Clubhouse (500,000) used to divide the reassessed 1625 buildings between personal and business.",
+      "cellRange": "N24:P25",
+      "totalCell": null,
+      "total": null,
+      "targets": [
+        {
+          "label": "Value of our House",
+          "labelCell": "N24",
+          "target": "PERSONAL",
+          "weight": 1500000,
+          "weightCell": "O24",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.75,
+          "shareCell": "P24"
+        },
+        {
+          "label": "Value of Club House",
+          "labelCell": "N25",
+          "target": "Rentals:The Clubhouse",
+          "weight": 500000,
+          "weightCell": "O25",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.25,
+          "shareCell": "P25"
+        }
+      ],
+      "usedFor": [
+        "2022 assessment Buildings row: R32 = Q32 x P24 (personal), S32 = Q32 x P25 (business)."
+      ]
+    }
+  ],
+  "specificBills": [],
+  "reallocationOfGeneral": null,
+  "other": [
+    {
+      "title": "Readjusted valuation table (for 2022)",
+      "cellRange": "N15:X22",
+      "summary": "A second copy of the lots/acres/value table headed by the note in N15: 'Readjusted after doing the taxes for figuring out allocation of tax bill for 2022 * This is what should be used for 2022'. Acreages change to Land to Develop 62 (O20 = 107 - O19 - O21) and Our House 30; Total Value Q20/Q21 come out 0 because their formulas point at empty cells (O14/O15), so Land Value R (still computed from C2/C3) exceeds Total Value and column S goes negative. Columns T and U are transcribed as percentage sets; V ('Expenses with no Shed'), W ('Expenses with all') and X ('Expenses with no personal house') are incomplete here (they sum to 0.43, 0.54 and 0.33) and are recorded only as data.",
+      "headers": {
+        "N17": "Lots",
+        "O17": "Acres",
+        "Q17": "Total Value",
+        "R17": "Land Value",
+        "S17": "Build & Personal Furnishings",
+        "V17": "Expenses with no Shed",
+        "W17": "Expenses with all",
+        "X17": "Expenses with no personal house"
+      },
+      "columns": [
+        "label",
+        "lots (N)",
+        "acres (O)",
+        "total value (Q)",
+        "land value (R)",
+        "build & furnishings (S)",
+        "V no Shed",
+        "W all",
+        "X no house"
+      ],
+      "data": [
+        ["The Shed", 1, 2.2, 225000.0, 77989.13, 147010.87, null, 0.2, 0.123283],
+        ["The Club House", 1, 15, 375000.0, 95380.43, 279619.57, 0.43, 0.34, 0.205471],
+        ["The Land to Develop", 4, 62, 0.0, 384239.13, -384239.13, 0.0, 0.0, 0.0],
+        ["Our House", 1, 30, 0.0, 115760.87, -115760.87, 0.0, 0.0, null]
+      ],
+      "totals": {
+        "O22": 109.2,
+        "Q22": 1100000.0,
+        "R22": 673369.57,
+        "S22": -73369.57,
+        "V22": 0.43
+      },
+      "note": "Values in this block are the sheet's cached values; nothing here was re-derived."
+    },
+    {
+      "title": "2022 reassessment of the 1625 parcel, personal vs business",
+      "cellRange": "N28:S34",
+      "summary": "Tax rate 0.0341 (O28). The county reassessment: Land 69,130 (unchanged); Buildings 141,000 original + 758,860 change = 899,860 new; total original 210,130 (O33). The new assessment is split Personal / Business: land by the readjusted house acreage share T21 (27.47%) -> 18,991.76 personal / 50,138.24 business; buildings by pct_house_vs_clubhouse (75% / 25%) -> 674,895 personal / 224,965 business. Row 34 multiplies by the tax rate: O34 = original assessment x rate = 7,165.43; R34 = 23,661.54 estimated personal tax; S34 = 9,381.02 estimated business tax. These are estimates of the 2022 bill, not amounts booked in 2021.",
+      "headers": {
+        "N28": "Tax Rate",
+        "N30": "2022 Assessment",
+        "O30": "Original",
+        "P30": "Change",
+        "Q30": "New",
+        "R30": "Personal",
+        "S30": "Business",
+        "N31": "Land",
+        "N32": "Buildings"
+      },
+      "columns": ["row", "original (O)", "change (P)", "new (Q)", "personal (R)", "business (S)"],
+      "data": [
+        ["Tax Rate", 0.0341, null, null, null, null],
+        ["Land", 69130.0, 0.0, 69130.0, 18991.76, 50138.24],
+        ["Buildings", 141000.0, 758860.0, 899860.0, 674895.0, 224965.0],
+        ["Total", 210130.0, null, null, 693886.76, 275103.24],
+        ["x Tax Rate", 7165.43, null, null, 23661.54, 9381.02]
+      ],
+      "cells": [
+        "O28",
+        "O31",
+        "P31",
+        "Q31",
+        "R31",
+        "S31",
+        "O32",
+        "P32",
+        "Q32",
+        "R32",
+        "S32",
+        "O33",
+        "R33",
+        "S33",
+        "O34",
+        "R34",
+        "S34"
+      ],
+      "setKeys": ["pct_land_expenses_readjusted", "pct_house_vs_clubhouse"]
+    },
+    {
+      "title": "The Clubhouse cost-basis breakdown",
+      "target": "Rentals:The Clubhouse",
+      "cellRange": "B17:D28",
+      "summary": "Cost-basis breakdown of the assigned value into building / land / fixtures with each line's fraction of the total (D = C / total). Total 375,000 = the Clubhouse value in E7.",
+      "columns": ["item", "amount", "fraction", "amountCell", "fractionCell"],
+      "data": [
+        ["The Clubhouse", 232113.0, 0.618968, "C18", "D18"],
+        ["The Clubhouse Land", 87887.0, 0.234365, "C19", "D19"],
+        ["Carpet", 17500.0, 0.046667, "C20", "D20"],
+        ["3 HVAC Systems", 16500.0, 0.044, "C21", "D21"],
+        ["Water Heaters", 3000.0, 0.008, "C22", "D22"],
+        ["Kitchen Equipment", 5000.0, 0.013333, "C23", "D23"],
+        ["Lighting Fixtures", 1000.0, 0.002667, "C24", "D24"],
+        ["Bathroom Toilets and Fixtures", 5000.0, 0.013333, "C25", "D25"],
+        ["Bar Area", 3500.0, 0.009333, "C26", "D26"],
+        ["Furniture", 3500.0, 0.009333, "C27", "D27"]
+      ],
+      "total": 375000.0,
+      "totalCell": "C28",
+      "fractionTotal": 1.0,
+      "fractionTotalCell": "D28",
+      "headerCell": "B17"
+    },
+    {
+      "title": "The Shed cost-basis breakdown",
+      "target": "Rentals:The Shed",
+      "cellRange": "B30:D36",
+      "summary": "Cost-basis breakdown of the assigned value into building / land / fixtures with each line's fraction of the total (D = C / total). Total 225,000 = the Shed value in E6.",
+      "columns": ["item", "amount", "fraction", "amountCell", "fractionCell"],
+      "data": [
+        ["The Shed", 142165.0, 0.631844, "C31", "D31"],
+        ["The Shed Land", 77835.0, 0.345933, "C32", "D32"],
+        ["Lighting", 1500.0, 0.006667, "C33", "D33"],
+        ["Tools and Equipment", 3000.0, 0.013333, "C34", "D34"],
+        ["Heating System", 500.0, 0.002222, "C35", "D35"]
+      ],
+      "total": 225000.0,
+      "totalCell": "C36",
+      "fractionTotal": 1.0,
+      "fractionTotalCell": "D36",
+      "headerCell": "B30"
+    },
+    {
+      "title": "142 Maloney Terrace cost-basis breakdown",
+      "target": "Rentals:142 Maloney Terrace",
+      "cellRange": "B38:D42",
+      "summary": "Cost-basis breakdown of the assigned value into building / land / fixtures with each line's fraction of the total (D = C / total). Uses ledger account names (1303 Building, 1302 Land, 1305 Personal Furnishings); total 258,250 feeds E12.",
+      "columns": ["item", "amount", "fraction", "amountCell", "fractionCell"],
+      "data": [
+        ["1303 Property - Building", 160475.0, 0.621394, "C39", "D39"],
+        ["1302 Property - Land", 68775.0, 0.266312, "C40", "D40"],
+        ["1305 Property - Personal Furnishings", 29000.0, 0.112294, "C41", "D41"]
+      ],
+      "total": 258250.0,
+      "totalCell": "C42",
+      "fractionTotal": 1.0,
+      "fractionTotalCell": "D42",
+      "headerCell": "B38"
+    },
+    {
+      "title": "176 Tulsk Road purchase: prorated taxes, closing costs, HOA, cost-basis breakdown",
+      "target": "Rentals:176 Tulsk Road",
+      "cellRange": "F17:H60",
+      "headerCell": "F17",
+      "summary": "2021 purchase of 176 Tulsk Road for 285,000 (G40 feeds E13). Prorated taxes 1,456.40, closing costs 5,075.25 and HOA charges 950 make Total Due at Closing 292,481.65 (G41 = G40+G38+G31+G23). The Breakdown allocates the 285,000 price to building 69% and land 17.5% (H45, H46 are inputs; G = H x price) and to fixtures by dollar amount (G47:G53 inputs; H = G / price). Breakdown Summary: building 196,650 / land 49,875 / fixtures 38,475.",
+      "sections": [
+        {
+          "section": "Taxes",
+          "headerCell": "F19",
+          "lines": [
+            ["City/Town", 123.97, "G20"],
+            ["County", 451.35, "G21"],
+            ["School", 881.08, "G22"]
+          ],
+          "total": 1456.4,
+          "totalCell": "G23",
+          "totalLabelCell": "F23"
+        },
+        {
+          "section": "Closing Costs",
+          "headerCell": "F25",
+          "lines": [
+            ["Title Insurance", 2079.5, "G26"],
+            ["Notary", 40.0, "G27"],
+            ["Wire Fee", 17.0, "G28"],
+            ["Gov Recording Charge", 88.75, "G29"],
+            ["Transfer Tax", 2850.0, "G30"]
+          ],
+          "total": 5075.25,
+          "totalCell": "G31",
+          "totalLabelCell": "F31"
+        },
+        {
+          "section": "HOA Charges",
+          "headerCell": "F33",
+          "lines": [
+            ["April", 70.0, "G34"],
+            ["May", 140.0, "G35"],
+            ["June", 140.0, "G36"],
+            ["Working Capital", 600.0, "G37"]
+          ],
+          "total": 950.0,
+          "totalCell": "G38",
+          "totalLabelCell": "F38"
+        }
+      ],
+      "purchasePrice": 285000.0,
+      "purchasePriceCell": "G40",
+      "purchasePriceLabelCell": "F40",
+      "totalDueAtClosing": 292481.65,
+      "totalDueAtClosingCell": "G41",
+      "totalDueLabelCell": "F41",
+      "breakdown": {
+        "headerCell": "F44",
+        "columns": ["item", "amount", "fraction", "amountCell", "fractionCell"],
+        "rows": [
+          ["Building", 196650.0, 0.69, "G45", "H45"],
+          ["Land", 49875.0, 0.175, "G46", "H46"],
+          ["Carpet", 13000.0, 0.045614, "G47", "H47"],
+          ["HVAC", 10000.0, 0.035088, "G48", "H48"],
+          ["Water Heater", 1700.0, 0.005965, "G49", "H49"],
+          ["Plumbing Fixtures", 2500.0, 0.008772, "G50", "H50"],
+          ["Appliances", 3500.0, 0.012281, "G51", "H51"],
+          ["Lighting Fixtures", 2000.0, 0.007018, "G52", "H52"],
+          ["Blinds", 5775.0, 0.020263, "G53", "H53"]
+        ],
+        "total": 285000.0,
+        "totalCell": "G54",
+        "totalLabelCell": "F54",
+        "fractionTotal": 1.0,
+        "fractionTotalCell": "H54"
+      },
+      "breakdownSummary": {
+        "headerCell": "F56",
+        "rows": [
+          ["Total Building", 196650.0, "G57"],
+          ["Total Land", 49875.0, "G58"],
+          ["Total Fixtures", 38475.0, "G59"]
+        ]
+      }
+    },
+    {
+      "title": "544 Liberty Circle purchase: prorated taxes, closing costs, HOA, final utilities, cost-basis breakdown",
+      "target": "Rentals:544 Liberty Circle",
+      "cellRange": "J17:L60",
+      "headerCell": "J17",
+      "summary": "2021 purchase of 544 Liberty Circle for 284,000 (K41 feeds E14). Prorated taxes 1,756.55, closing costs 5,059.55, HOA 1,150 and final water/sewer 112.96 make Total Due at Closing 292,079.06 (K42 = K23+K31+K36+K39+K41). The Breakdown applies 176 Tulsk's percentages (H45:H53) to the 284,000 price (K = K41 x H). Column L recomputes fractions, but L50:L53 divide by 176 Tulsk's price G40 instead of K41 (a copy slip), so L54 sums to 0.99983 rather than 1. Breakdown Summary: building 195,960 / land 49,700 / fixtures 38,340.",
+      "sections": [
+        {
+          "section": "Taxes",
+          "headerCell": "J19",
+          "lines": [
+            ["City/Town", 469.42, "K20"],
+            ["County", 427.26, "K21"],
+            ["School", 859.87, "K22"]
+          ],
+          "total": 1756.55,
+          "totalCell": "K23",
+          "totalLabelCell": "J23"
+        },
+        {
+          "section": "Closing Costs",
+          "headerCell": "J25",
+          "lines": [
+            ["Title Services", 40.0, "K26"],
+            ["Title Insurance", 2073.8, "K27"],
+            ["Wire Fee", 17.0, "K28"],
+            ["Gov Recording Charge", 88.75, "K29"],
+            ["Transfer Tax", 2840.0, "K30"]
+          ],
+          "total": 5059.55,
+          "totalCell": "K31",
+          "totalLabelCell": "J31"
+        },
+        {
+          "section": "HOA Charges",
+          "headerCell": "J33",
+          "lines": [
+            ["Capital Contribution", 750.0, "K34"],
+            ["April and May", 400.0, "K35"]
+          ],
+          "total": 1150.0,
+          "totalCell": "K36",
+          "totalLabelCell": "J36"
+        },
+        {
+          "section": "Final Utilities",
+          "headerCell": "J38",
+          "lines": [["Water and Sewer", 112.96, "K39"]]
+        }
+      ],
+      "purchasePrice": 284000.0,
+      "purchasePriceCell": "K41",
+      "purchasePriceLabelCell": "J41",
+      "totalDueAtClosing": 292079.06,
+      "totalDueAtClosingCell": "K42",
+      "totalDueLabelCell": "J42",
+      "breakdown": {
+        "headerCell": "J44",
+        "columns": ["item", "amount", "fraction", "amountCell", "fractionCell"],
+        "rows": [
+          ["Building", 195960.0, 0.69, "K45", "L45"],
+          ["Land", 49700.0, 0.175, "K46", "L46"],
+          ["Carpet", 12954.39, 0.045614, "K47", "L47"],
+          ["HVAC", 9964.91, 0.035088, "K48", "L48"],
+          ["Water Heater", 1694.04, 0.005965, "K49", "L49"],
+          ["Plumbing Fixtures", 2491.23, 0.008741, "K50", "L50"],
+          ["Appliances", 3487.72, 0.012238, "K51", "L51"],
+          ["Lighting Fixtures", 1992.98, 0.006993, "K52", "L52"],
+          ["Blinds", 5754.74, 0.020192, "K53", "L53"]
+        ],
+        "total": 284000.0,
+        "totalCell": "K54",
+        "totalLabelCell": "J54",
+        "fractionTotal": 0.99983,
+        "fractionTotalCell": "L54"
+      },
+      "breakdownSummary": {
+        "headerCell": "J56",
+        "rows": [
+          ["Total Building", 195960.0, "K57"],
+          ["Total Land", 49700.0, "K58"],
+          ["Total Fixtures", 38340.0, "K59"]
+        ]
+      }
+    }
+  ],
+  "coverage": {
+    "nonEmptyCells": 394,
+    "accountedFor": 394,
+    "unaccounted": []
+  },
+  "propertiesTable": {
+    "headerCells": {
+      "B5": "Lots",
+      "C5": "Acres",
+      "E5": "Total Value",
+      "F5": "Land Value",
+      "G5": "Build & Personal Furnishings"
+    },
+    "totals": {
+      "acres": 109.2,
+      "acresCell": "C10",
+      "chiselCreekValue": 1100000.0,
+      "chiselCreekValueCell": "E10",
+      "chiselCreekLandValue": 673369.57,
+      "chiselCreekLandValueCell": "F10",
+      "chiselCreekBuildValue": 426630.43,
+      "chiselCreekBuildValueCell": "G10",
+      "allPropertiesValue": 1927250.0,
+      "allPropertiesValueCell": "E15"
+    }
+  }
+}

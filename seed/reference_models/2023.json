@@ -1,0 +1,994 @@
+{
+  "year": 2023,
+  "sheet": "2023 Tax Worksheet",
+  "method": "In 2023 Jose gave every property an assigned market value and used those values as the weights for all splits (acres are listed for the Chisel Creek pieces but are not used as weights). The developable land at 13 Chisel Creek was valued at 2,142,000: 10 buildable lots at 120,000 each plus 62.8 acres at 15,000 per acre. The other values were 350,000 for 1671-1675 New London Rd, 300,000 for The Shed, 500,000 for The Clubhouse, 1,250,000 for Jose's house, and 360,000 each for 176 Tulsk, 142 Maloney and 544 Liberty. Five percentage sets come from those values. '% (all)' spreads the 1,335.00 umbrella insurance over all eight properties including the house. '% Just Chisel Creek Land' spreads the 2,619.00 Chisel Creek insurance over the Shed, the Clubhouse, the land and the house. '% Just 1625' spreads the Franklin Township (2,417.63), Chester County (4,850.86) and Avon Grove School District (33,188.88) taxes on the 1625 parcel over the Clubhouse, the land and the house. In each of those bills the Our House share is Jose's personal expense and goes to 3102 Capital Distribution, not to an expense account. A separate 'Reallocation of General Expenses' block then spreads each expense account's General-class total for the year across the business properties only: Landscaping and Repairs & Maintenance are split four ways over 1671-1675, the Shed, the Clubhouse and the land ('% Just Chisel Creek Properties'), while the remaining eleven accounts are split seven ways over every property except the house (the set labelled '% All' on row 22, which excludes the house). A list of Shed rent receipts by payer at the bottom of the sheet is documentation only.",
+  "properties": [
+    {
+      "label": "1621-1675",
+      "target": "Land Development:1671-1675 New London Rd",
+      "acres": 5.6,
+      "acresCell": "B11",
+      "value": 350000,
+      "valueCell": "D11",
+      "lots": null,
+      "lotsCell": null,
+      "note": "Sheet label reads '1621-1675'; this is the 1671-1675 New London Rd parcel.",
+      "labelCell": "C11"
+    },
+    {
+      "label": "The Shed",
+      "target": "Rentals:The Shed",
+      "acres": 2.2,
+      "acresCell": "B12",
+      "value": 300000,
+      "valueCell": "D12",
+      "lots": null,
+      "lotsCell": null,
+      "note": "",
+      "labelCell": "C12"
+    },
+    {
+      "label": "The Club House",
+      "target": "Rentals:The Clubhouse",
+      "acres": 15,
+      "acresCell": "B13",
+      "value": 500000,
+      "valueCell": "D13",
+      "lots": null,
+      "lotsCell": null,
+      "note": "",
+      "labelCell": "C13"
+    },
+    {
+      "label": "13 Chisel Creek Land",
+      "target": "Land Development:13 Chisel Creek Dr",
+      "acres": 62.8,
+      "acresCell": "B14",
+      "value": 2142000,
+      "valueCell": "D14",
+      "lots": null,
+      "lotsCell": null,
+      "note": "Value is the land valuation total (E6): 10 buildable lots x 120,000 plus 62.8 acres x 15,000. Acres (62.8) equals the per-acre count in D5.",
+      "labelCell": "C14"
+    },
+    {
+      "label": "Our House",
+      "target": "PERSONAL",
+      "acres": 30,
+      "acresCell": "B15",
+      "value": 1250000,
+      "valueCell": "D15",
+      "lots": null,
+      "lotsCell": null,
+      "note": "Jose's personal house; its share is personal (Capital Distribution), not a class.",
+      "labelCell": "C15"
+    },
+    {
+      "label": "176 Tulsk",
+      "target": "Rentals:176 Tulsk Road",
+      "acres": null,
+      "acresCell": null,
+      "value": 360000,
+      "valueCell": "D16",
+      "lots": null,
+      "lotsCell": null,
+      "note": "",
+      "labelCell": "C16"
+    },
+    {
+      "label": "142 Maloney",
+      "target": "Rentals:142 Maloney Terrace",
+      "acres": null,
+      "acresCell": null,
+      "value": 360000,
+      "valueCell": "D17",
+      "lots": null,
+      "lotsCell": null,
+      "note": "",
+      "labelCell": "C17"
+    },
+    {
+      "label": "544 Liberty",
+      "target": "Rentals:544 Liberty Circle",
+      "acres": null,
+      "acresCell": null,
+      "value": 360000,
+      "valueCell": "D18",
+      "lots": null,
+      "lotsCell": null,
+      "note": "",
+      "labelCell": "C18"
+    }
+  ],
+  "propertyHeaderCells": ["B10", "C10", "D10"],
+  "propertyTotals": {
+    "acres": 110,
+    "acresCell": "B19",
+    "value": 5622000,
+    "valueCell": "D19",
+    "note": "B19 (110) does not equal the sum of the acre entries in B11:B15 (115.6); it is the sheet's cached value and is kept as-is."
+  },
+  "landValuation": {
+    "perLot": 120000,
+    "perLotCell": "C4",
+    "lots": 10,
+    "lotsCell": "D4",
+    "perAcre": 15000,
+    "perAcreCell": "C5",
+    "acres": 62.8,
+    "acresCell": "D5",
+    "lotsValue": 1200000,
+    "lotsValueCell": "E4",
+    "acresValue": 942000,
+    "acresValueCell": "E5",
+    "total": 2142000,
+    "totalCell": "E6",
+    "labelCells": ["B4", "B5"]
+  },
+  "percentageSets": [
+    {
+      "key": "pct_all",
+      "label": "% (all)",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "Share of assigned value across all eight properties including Jose's house (total value D19 = 5,622,000).",
+      "cellRange": "E11:E18",
+      "headerCell": "E10",
+      "sumCell": "E19",
+      "sum": 1,
+      "targets": [
+        {
+          "label": "1621-1675",
+          "target": "Land Development:1671-1675 New London Rd",
+          "weight": 350000,
+          "weightCell": "D11",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.06225542511561722,
+          "shareCell": "E11"
+        },
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 300000,
+          "weightCell": "D12",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.05336179295624333,
+          "shareCell": "E12"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 500000,
+          "weightCell": "D13",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.08893632159373888,
+          "shareCell": "E13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 2142000,
+          "weightCell": "D14",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.3810032017075774,
+          "shareCell": "E14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 1250000,
+          "weightCell": "D15",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.22234080398434722,
+          "shareCell": "E15"
+        },
+        {
+          "label": "176 Tulsk",
+          "target": "Rentals:176 Tulsk Road",
+          "weight": 360000,
+          "weightCell": "D16",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.064034151547492,
+          "shareCell": "E16"
+        },
+        {
+          "label": "142 Maloney",
+          "target": "Rentals:142 Maloney Terrace",
+          "weight": 360000,
+          "weightCell": "D17",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.064034151547492,
+          "shareCell": "E17"
+        },
+        {
+          "label": "544 Liberty",
+          "target": "Rentals:544 Liberty Circle",
+          "weight": 360000,
+          "weightCell": "D18",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.064034151547492,
+          "shareCell": "E18"
+        }
+      ],
+      "usedFor": ["Umbrella (All) Total 1,335.00 -> column F"]
+    },
+    {
+      "key": "pct_chisel_creek_land",
+      "label": "% Just Chisel Creek Land",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "Share of assigned value across the four pieces of the Chisel Creek property: The Shed, The Clubhouse, the developable land and Jose's house (total 4,192,000).",
+      "cellRange": "G12:G15",
+      "headerCell": "G10",
+      "sumCell": "G19",
+      "sum": 1,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 300000,
+          "weightCell": "D12",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.0715648854961832,
+          "shareCell": "G12"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 500000,
+          "weightCell": "D13",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.11927480916030535,
+          "shareCell": "G13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 2142000,
+          "weightCell": "D14",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.5109732824427481,
+          "shareCell": "G14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 1250000,
+          "weightCell": "D15",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.2981870229007634,
+          "shareCell": "G15"
+        }
+      ],
+      "usedFor": ["Insurance CC Total 2,619.00 -> column H"]
+    },
+    {
+      "key": "pct_just_1625",
+      "label": "% Just 1625",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "Share of assigned value across the three pieces on the 1625 tax parcel: The Clubhouse, the developable land and Jose's house (total 3,892,000).",
+      "cellRange": "I13:I15",
+      "headerCell": "I10",
+      "sumCell": "I19",
+      "sum": 1,
+      "targets": [
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 500000,
+          "weightCell": "D13",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.12846865364850976,
+          "shareCell": "I13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 2142000,
+          "weightCell": "D14",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.5503597122302158,
+          "shareCell": "I14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 1250000,
+          "weightCell": "D15",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.3211716341212744,
+          "shareCell": "I15"
+        }
+      ],
+      "usedFor": [
+        "Franklin Twnshp Tax 1625 2,417.63 -> column J",
+        "Chester County Tax 1625 4,850.86 -> column K",
+        "AG School District Tax 1625 33,188.88 -> column L"
+      ]
+    },
+    {
+      "key": "pct_cc_props_value",
+      "label": "% Just Chisel Creek Properties",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "Share of assigned value across the four business pieces of Chisel Creek / New London Rd: 1671-1675, The Shed, The Clubhouse and the developable land (no house, no other rentals; total 3,292,000). The weights are the assigned values repeated in row 23 (labelled 'Value' in C23).",
+      "cellRange": "D21:G21",
+      "headerCell": "C21",
+      "sumCell": null,
+      "sum": 1.0,
+      "targets": [
+        {
+          "label": "1671-1675",
+          "target": "Land Development:1671-1675 New London Rd",
+          "weight": 350000,
+          "weightCell": "D23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.106318347509113,
+          "shareCell": "D21"
+        },
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 300000,
+          "weightCell": "E23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.0911300121506683,
+          "shareCell": "E21"
+        },
+        {
+          "label": "The Clubhouse",
+          "target": "Rentals:The Clubhouse",
+          "weight": 500000,
+          "weightCell": "F23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.15188335358444716,
+          "shareCell": "F21"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 2142000,
+          "weightCell": "G23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.6506682867557716,
+          "shareCell": "G21"
+        }
+      ],
+      "usedFor": [
+        "Reallocation of General: 5204 Landscaping (row 25) and 5206 Repairs and Maintenance (row 26)"
+      ],
+      "weightRowLabel": "Value",
+      "weightRowLabelCell": "C23",
+      "weightRange": "D23:J23"
+    },
+    {
+      "key": "pct_all_no_house",
+      "label": "% All (no house)",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "Share of assigned value across the seven business properties, i.e. every property except Jose's house (total 4,372,000). The sheet labels it '% All'. The weights are the assigned values repeated in row 23 (labelled 'Value' in C23).",
+      "cellRange": "D22:J22",
+      "headerCell": "C22",
+      "sumCell": null,
+      "sum": 0.9999999999999998,
+      "targets": [
+        {
+          "label": "1671-1675",
+          "target": "Land Development:1671-1675 New London Rd",
+          "weight": 350000,
+          "weightCell": "D23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.08005489478499543,
+          "shareCell": "D22"
+        },
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 300000,
+          "weightCell": "E23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.0686184812442818,
+          "shareCell": "E22"
+        },
+        {
+          "label": "The Clubhouse",
+          "target": "Rentals:The Clubhouse",
+          "weight": 500000,
+          "weightCell": "F23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.11436413540713632,
+          "shareCell": "F22"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 2142000,
+          "weightCell": "G23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.489935956084172,
+          "shareCell": "G22"
+        },
+        {
+          "label": "176 Tulsk",
+          "target": "Rentals:176 Tulsk Road",
+          "weight": 360000,
+          "weightCell": "H23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.08234217749313816,
+          "shareCell": "H22"
+        },
+        {
+          "label": "142 Maloney",
+          "target": "Rentals:142 Maloney Terrace",
+          "weight": 360000,
+          "weightCell": "I23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.08234217749313816,
+          "shareCell": "I22"
+        },
+        {
+          "label": "544 Liberty",
+          "target": "Rentals:544 Liberty Circle",
+          "weight": 360000,
+          "weightCell": "J23",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.08234217749313816,
+          "shareCell": "J22"
+        }
+      ],
+      "usedFor": [
+        "Reallocation of General: rows 27-37 (5209, 5213, 5214, 5215, 5216, 5217, 5218, 5222, 5212, 5211, 5102)"
+      ],
+      "weightRowLabel": "Value",
+      "weightRowLabelCell": "C23",
+      "weightRange": "D23:J23"
+    }
+  ],
+  "specificBills": [
+    {
+      "label": "Umbrella (All) Total",
+      "labelCell": "G4",
+      "total": 1335,
+      "totalCell": "H4",
+      "setKey": "pct_all",
+      "allocationHeaderCell": "F10",
+      "sumCell": "F19",
+      "sum": 1335,
+      "note": "Umbrella insurance for the year, spread over all eight properties by value; the Our House share (296.82) is Jose's personal expense.",
+      "allocations": [
+        {
+          "label": "1621-1675",
+          "target": "Land Development:1671-1675 New London Rd",
+          "amount": 83.11099252934899,
+          "cell": "F11"
+        },
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "amount": 71.23799359658484,
+          "cell": "F12"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "amount": 118.7299893276414,
+          "cell": "F13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 508.63927427961585,
+          "cell": "F14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "amount": 296.82497331910355,
+          "cell": "F15"
+        },
+        {
+          "label": "176 Tulsk",
+          "target": "Rentals:176 Tulsk Road",
+          "amount": 85.48559231590181,
+          "cell": "F16"
+        },
+        {
+          "label": "142 Maloney",
+          "target": "Rentals:142 Maloney Terrace",
+          "amount": 85.48559231590181,
+          "cell": "F17"
+        },
+        {
+          "label": "544 Liberty",
+          "target": "Rentals:544 Liberty Circle",
+          "amount": 85.48559231590181,
+          "cell": "F18"
+        }
+      ]
+    },
+    {
+      "label": "Insurance CC Total",
+      "labelCell": "G5",
+      "total": 2619,
+      "totalCell": "H5",
+      "setKey": "pct_chisel_creek_land",
+      "allocationHeaderCell": "H10",
+      "sumCell": "H19",
+      "sum": 2619,
+      "note": "Chisel Creek property insurance, spread over Shed / Clubhouse / land / house by value; the Our House share (780.95) is personal.",
+      "allocations": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "amount": 187.4284351145038,
+          "cell": "H12"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "amount": 312.3807251908397,
+          "cell": "H13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 1338.2390267175572,
+          "cell": "H14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "amount": 780.9518129770993,
+          "cell": "H15"
+        }
+      ]
+    },
+    {
+      "label": "Franklin Twnshp Tax 1625",
+      "labelCell": "G6",
+      "total": 2417.63,
+      "totalCell": "H6",
+      "setKey": "pct_just_1625",
+      "allocationHeaderCell": "J10",
+      "sumCell": "J19",
+      "sum": 2417.63,
+      "note": "Franklin Township real estate tax on the 1625 parcel; Our House share (776.47) is personal.",
+      "allocations": [
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "amount": 310.5896711202467,
+          "cell": "J13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 1330.5661510791367,
+          "cell": "J14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "amount": 776.4741778006168,
+          "cell": "J15"
+        }
+      ]
+    },
+    {
+      "label": "Chester County Tax 1625",
+      "labelCell": "G7",
+      "total": 4850.86,
+      "totalCell": "H7",
+      "setKey": "pct_just_1625",
+      "allocationHeaderCell": "K10",
+      "sumCell": "K19",
+      "sum": 4850.86,
+      "note": "Chester County real estate tax on the 1625 parcel; Our House share (1,557.96) is personal.",
+      "allocations": [
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "amount": 623.18345323741,
+          "cell": "K13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 2669.7179136690647,
+          "cell": "K14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "amount": 1557.9586330935251,
+          "cell": "K15"
+        }
+      ]
+    },
+    {
+      "label": "AG School District Tax 1625",
+      "labelCell": "G8",
+      "total": 33188.88,
+      "totalCell": "H8",
+      "setKey": "pct_just_1625",
+      "allocationHeaderCell": "L10",
+      "sumCell": "L19",
+      "sum": 33188.88,
+      "note": "Avon Grove School District tax on the 1625 parcel; Our House share (10,659.33) is personal.",
+      "allocations": [
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "amount": 4263.730729701952,
+          "cell": "L13"
+        },
+        {
+          "label": "13 Chisel Creek Land",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "amount": 18265.822446043163,
+          "cell": "L14"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "amount": 10659.326824254882,
+          "cell": "L15"
+        }
+      ]
+    }
+  ],
+  "reallocationOfGeneral": {
+    "cellRange": "B24:K37",
+    "description": "For each expense account, the General-class total for 2023 (column C) is spread across the business properties. Landscaping and Repairs & Maintenance use the four-way Chisel Creek Properties set (row 21); every other account uses the seven-way all-properties-except-house set (row 22). Column K re-adds the pieces as a check. There is no totals row and Jose's house receives nothing in this block.",
+    "columns": [
+      {
+        "label": "1671-1675",
+        "target": "Land Development:1671-1675 New London Rd",
+        "headerCell": "D24"
+      },
+      {
+        "label": "The Shed",
+        "target": "Rentals:The Shed",
+        "headerCell": "E24"
+      },
+      {
+        "label": "The Clubhouse",
+        "target": "Rentals:The Clubhouse",
+        "headerCell": "F24"
+      },
+      {
+        "label": "13 Chisel Creek Land",
+        "target": "Land Development:13 Chisel Creek Dr",
+        "headerCell": "G24"
+      },
+      {
+        "label": "176 Tulsk",
+        "target": "Rentals:176 Tulsk Road",
+        "headerCell": "H24"
+      },
+      {
+        "label": "142 Maloney",
+        "target": "Rentals:142 Maloney Terrace",
+        "headerCell": "I24"
+      },
+      {
+        "label": "544 Liberty",
+        "target": "Rentals:544 Liberty Circle",
+        "headerCell": "J24"
+      }
+    ],
+    "rows": [
+      {
+        "account": "5204",
+        "accountLabel": "5204 Landscaping Expense",
+        "accountCell": "B25",
+        "total": 38321.08,
+        "totalCell": "C25",
+        "setKey": "pct_cc_props_value",
+        "amounts": [
+          4074.23390036452,
+          3492.200486026732,
+          5820.334143377887,
+          24934.311470230867,
+          null,
+          null,
+          null
+        ],
+        "amountCells": "D25:J25",
+        "rowTotal": 38321.08,
+        "rowTotalCell": "K25"
+      },
+      {
+        "account": "5206",
+        "accountLabel": "5206 Repairs and Maintenance Expense",
+        "accountCell": "B26",
+        "total": 22272.49,
+        "totalCell": "C26",
+        "setKey": "pct_cc_props_value",
+        "amounts": [
+          2367.9743317132443,
+          2029.6922843256382,
+          3382.8204738760637,
+          14492.002910085057,
+          null,
+          null,
+          null
+        ],
+        "amountCells": "D26:J26",
+        "rowTotal": 22272.490000000005,
+        "rowTotalCell": "K26"
+      },
+      {
+        "account": "5209",
+        "accountLabel": "5209 Cleaning Expense",
+        "accountCell": "B27",
+        "total": 119,
+        "totalCell": "C27",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          9.526532479414456, 8.165599268069535, 13.609332113449222, 58.30237877401647,
+          9.79871912168344, 9.79871912168344, 9.79871912168344
+        ],
+        "amountCells": "D27:J27",
+        "rowTotal": 118.99999999999997,
+        "rowTotalCell": "K27"
+      },
+      {
+        "account": "5213",
+        "accountLabel": "5213 Postage & Delivery Expense",
+        "accountCell": "B28",
+        "total": 24.75,
+        "totalCell": "C28",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          1.981358645928637, 1.6983074107959746, 2.830512351326624, 12.125914913083257,
+          2.0379688929551696, 2.0379688929551696, 2.0379688929551696
+        ],
+        "amountCells": "D28:J28",
+        "rowTotal": 24.750000000000004,
+        "rowTotalCell": "K28"
+      },
+      {
+        "account": "5214",
+        "accountLabel": "5214 Software Expense",
+        "accountCell": "B29",
+        "total": 651.37,
+        "totalCell": "C29",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          52.14535681610248, 44.69602012808784, 74.49336688014638, 319.1295837145471,
+          53.6352241537054, 53.6352241537054, 53.6352241537054
+        ],
+        "amountCells": "D29:J29",
+        "rowTotal": 651.37,
+        "rowTotalCell": "K29"
+      },
+      {
+        "account": "5215",
+        "accountLabel": "5215 Supplies Expense",
+        "accountCell": "B30",
+        "total": 2414.29,
+        "totalCell": "C30",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          193.2757319304666, 165.6649130832571, 276.10818847209515, 1182.8474794144556,
+          198.7978956999085, 198.7978956999085, 198.7978956999085
+        ],
+        "amountCells": "D30:J30",
+        "rowTotal": 2414.2900000000004,
+        "rowTotalCell": "K30"
+      },
+      {
+        "account": "5216",
+        "accountLabel": "5216 Travel Expense",
+        "accountCell": "B31",
+        "total": 2372.3,
+        "totalCell": "C31",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          189.91422689844467, 162.78362305580973, 271.3060384263495, 1162.2750686184813,
+          195.34034766697167, 195.34034766697167, 195.34034766697167
+        ],
+        "amountCells": "D31:J31",
+        "rowTotal": 2372.3000000000006,
+        "rowTotalCell": "K31"
+      },
+      {
+        "account": "5217",
+        "accountLabel": "5217 Meals and Entertainment Expense",
+        "accountCell": "B32",
+        "total": 2710.5399999999995,
+        "totalCell": "C32",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          216.99199451052147, 185.99313815187554, 309.98856358645924, 1327.9910064043913,
+          223.19176578225066, 223.19176578225066, 223.19176578225066
+        ],
+        "amountCells": "D32:J32",
+        "rowTotal": 2710.539999999999,
+        "rowTotalCell": "K32"
+      },
+      {
+        "account": "5218",
+        "accountLabel": "5218 Training Expense",
+        "accountCell": "B33",
+        "total": 429.96000000000004,
+        "totalCell": "C33",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          34.42040256175664, 29.503202195791406, 49.17200365965233, 210.65286367795062,
+          35.40384263494968, 35.40384263494968, 35.40384263494968
+        ],
+        "amountCells": "D33:J33",
+        "rowTotal": 429.96000000000004,
+        "rowTotalCell": "K33"
+      },
+      {
+        "account": "5222",
+        "accountLabel": "5222 Miscellaneous Expense",
+        "accountCell": "B34",
+        "total": 75.22999999999999,
+        "totalCell": "C34",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          6.022529734675206, 5.162168344007319, 8.603613906678865, 36.857881976212255,
+          6.194602012808783, 6.194602012808783, 6.194602012808783
+        ],
+        "amountCells": "D34:J34",
+        "rowTotal": 75.23,
+        "rowTotalCell": "K34"
+      },
+      {
+        "account": "5212",
+        "accountLabel": "5212 Bank Fees",
+        "accountCell": "B35",
+        "total": -1,
+        "totalCell": "C35",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          -0.08005489478499543, -0.0686184812442818, -0.11436413540713632, -0.489935956084172,
+          -0.08234217749313816, -0.08234217749313816, -0.08234217749313816
+        ],
+        "amountCells": "D35:J35",
+        "rowTotal": -0.9999999999999998,
+        "rowTotalCell": "K35",
+        "note": "Negative total: the General-class Bank Fees net to -1.00 for the year (a refund larger than the fees), so each share is negative."
+      },
+      {
+        "account": "5211",
+        "accountLabel": "5211 Professional Fees",
+        "accountCell": "B36",
+        "total": 243.12,
+        "totalCell": "C36",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          19.46294602012809, 16.68252516010979, 27.80420860018298, 119.1132296431839,
+          20.019030192131748, 20.019030192131748, 20.019030192131748
+        ],
+        "amountCells": "D36:J36",
+        "rowTotal": 243.11999999999998,
+        "rowTotalCell": "K36"
+      },
+      {
+        "account": "5102",
+        "accountLabel": "5102 Incorporation Expenses",
+        "accountCell": "B37",
+        "total": 225,
+        "totalCell": "C37",
+        "setKey": "pct_all_no_house",
+        "amounts": [
+          18.01235132662397, 15.439158279963404, 25.73193046660567, 110.2355901189387,
+          18.526989935956085, 18.526989935956085, 18.526989935956085
+        ],
+        "amountCells": "D37:J37",
+        "rowTotal": 225.00000000000003,
+        "rowTotalCell": "K37"
+      }
+    ],
+    "totals": {
+      "byColumn": null,
+      "grand": null,
+      "cell": null,
+      "note": "The 2023 sheet has no totals row for this block; column K holds each row's check total."
+    },
+    "checkTotalHeaderCell": "K24",
+    "checkTotalHeaderLabel": "Total"
+  },
+  "other": [
+    {
+      "title": "Sheet title",
+      "cellRange": "B2",
+      "summary": "Heading text 'Allocation Percentage Calculations'.",
+      "data": [["B2", "Allocation Percentage Calculations"]]
+    },
+    {
+      "title": "Shed rental payments by payer",
+      "cellRange": "C39:G71",
+      "summary": "Two columns of Shed rent receipts for 2023 with no dates: 29 payments from Jen Balint (D40:D68, total 1,690.00 in D69) and 10 payments from Bulldogs (E40:E49, total 5,700.00 in E69). F69 = 7,390.00 total received; F70 = 4,600.00 already transferred via Venmo; F71 = 2,790.00 still remaining. Documentation only; the ledger's Shed income is the source of truth.",
+      "columns": ["cell", "payer", "amount"],
+      "data": [
+        ["D40", "Jen Balint", 60],
+        ["D41", "Jen Balint", 40],
+        ["D42", "Jen Balint", 60],
+        ["D43", "Jen Balint", 40],
+        ["D44", "Jen Balint", 60],
+        ["D45", "Jen Balint", 40],
+        ["D46", "Jen Balint", 60],
+        ["D47", "Jen Balint", 50],
+        ["D48", "Jen Balint", 50],
+        ["D49", "Jen Balint", 70],
+        ["D50", "Jen Balint", 40],
+        ["D51", "Jen Balint", 70],
+        ["D52", "Jen Balint", 50],
+        ["D53", "Jen Balint", 60],
+        ["D54", "Jen Balint", 50],
+        ["D55", "Jen Balint", 60],
+        ["D56", "Jen Balint", 30],
+        ["D57", "Jen Balint", 30],
+        ["D58", "Jen Balint", 60],
+        ["D59", "Jen Balint", 40],
+        ["D60", "Jen Balint", 50],
+        ["D61", "Jen Balint", 40],
+        ["D62", "Jen Balint", 300],
+        ["D63", "Jen Balint", 40],
+        ["D64", "Jen Balint", 60],
+        ["D65", "Jen Balint", 60],
+        ["D66", "Jen Balint", 50],
+        ["D67", "Jen Balint", 60],
+        ["D68", "Jen Balint", 10],
+        ["E40", "Bulldogs", 100],
+        ["E41", "Bulldogs", 800],
+        ["E42", "Bulldogs", 800],
+        ["E43", "Bulldogs", 600],
+        ["E44", "Bulldogs", 800],
+        ["E45", "Bulldogs", 800],
+        ["E46", "Bulldogs", 800],
+        ["E47", "Bulldogs", 300],
+        ["E48", "Bulldogs", 300],
+        ["E49", "Bulldogs", 400]
+      ],
+      "totals": [
+        ["D69", "Jen Balint total", 1690],
+        ["E69", "Bulldogs total", 5700],
+        ["F69", "<=total received", 7390],
+        ["F70", "<= transferred via venmo", 4600],
+        ["F71", "<=total remaining", 2790]
+      ],
+      "labelCells": ["D39", "E39", "C69", "G69", "G70", "G71"]
+    }
+  ],
+  "coverage": {
+    "nonEmptyCells": 301,
+    "accountedFor": 301,
+    "unaccounted": [],
+    "roundingNote": "Every number is the sheet's full-precision cached value as read by openpyxl (not rounded to 2 decimals or 6 decimals), so every percentage set sums to exactly 1, every bill and reallocation row sums to exactly its total, and total x share equals each allocated cell exactly. Display rounding (cents, 6-decimal shares) is left to the app."
+  },
+  "precision": "full-precision cached cell values; round at display time"
+}

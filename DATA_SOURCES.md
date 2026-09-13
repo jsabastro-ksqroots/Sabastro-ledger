@@ -9,6 +9,14 @@
 > ledger note starts (after a leading space) with `[Unsplit 2026-09-10`, three (not two) identical
 > `McGovern −135.15` rows on 2025-01-07, and two trailer rows below the table that have no `#`.
 
+> **Corrections 2026-09-13 (Phase 2 import, see `docs/IMPORT_REPORT.md` and DECISIONS P2-4, P2-9, P2-16).**
+> The 43 negative cells are **25 negative debits and 18 negative credits** (each side Σ −5,862.32); four 2024
+> entries (2264, 2531, 2724, 2898) carry two dates; 194 amounts in the 2023 reallocation entries have
+> fractions of a cent; "Filled in by" has **31** distinct values and there are **797** distinct Row IDs
+> (the earlier counts included the blank); **92** 2025 rows are cross-entity (89 Providence on `1101`
+> plus 3 Providence via Venmo: #818, #843, #850); same-day identical rows = 7 groups / 15 rows on the key
+> (bank, date, amount). The import reproduces every money figure below to the cent.
+
 Both files live in `data/source/` (git-ignored). Everything below was verified by opening the files with `openpyxl`; re-verify counts in your import report.
 
 | File                                                                                                                                                          | Covers                                                                                                                     | Sheets                                                                                                                         |

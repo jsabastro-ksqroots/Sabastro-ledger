@@ -1,0 +1,326 @@
+{
+  "year": 2020,
+  "sheet": "2020 Tax Worksheet",
+  "titleCell": "B2",
+  "title": "2020 Allocation Worksheet",
+  "method": "In 2020 Jose split the shared costs of the Chisel Creek property four ways: The Shed, The Club House, The Land to Develop and Our House (his personal home). He first assigned a value to each: the Shed (225,000) and the Clubhouse (375,000) were typed in, and the remaining 500,000 of the 1,100,000 whole-property value was spread over the Land and the House using 5 buildable lots at 75,000 each plus a per-acre rate of about 1,288.66 on 97 acres, which gives the Land (4 lots, 39 acres) 350,257.73 and the House (1 lot, 58 acres) 149,742.27. Two percentage sets come out of that table. '% of Land Expenses' is by acres (Shed 2.0%, Clubhouse 9.2%, Land 35.7%, House 53.1%) and is meant for costs that relate to the ground itself. '% of Other Expenses' is by value (Shed 20.5%, Clubhouse 34.1%, Land 31.8%, House 13.6%) and is meant for everything else shared. A third set, 'Expenses with no Shed', leaves the Shed out and uses value shares rounded to whole percents (Clubhouse 43%, Land 40%, House 17%) for costs that do not touch the Shed. The House share in every set is Jose's personal portion and goes to 3102 Capital Distribution rather than to an expense account. This year's tab does not list individual bills or a reallocation table; the percentages were applied directly when the 2020 ledger lines were split, so nothing here is re-applied by the app. The tab also carries a breakdown of the 39 acres of developable land and a later '2022 Assessment' note that splits the parcel's tax assessment into personal and business portions (land by the house's acre share, buildings by original vs added assessment) at a 3.41% tax rate.",
+  "properties": [
+    {
+      "label": "The Shed",
+      "labelCell": "D5",
+      "target": "Rentals:The Shed",
+      "acres": 2.2,
+      "acresCell": "C5",
+      "value": 225000.0,
+      "valueCell": "E5",
+      "lots": 1,
+      "lotsCell": "B5",
+      "landValue": 77835.05,
+      "landValueCell": "F5",
+      "buildingAndFurnishingsValue": 147164.95,
+      "buildingAndFurnishingsValueCell": "G5",
+      "note": "Shed value 225,000 is typed in; land value = 1 lot x 75,000 + 2.2 ac x 1,288.66 (F5), the rest (G5) is building and furnishings."
+    },
+    {
+      "label": "The Club House",
+      "labelCell": "D6",
+      "target": "Rentals:The Clubhouse",
+      "acres": 10,
+      "acresCell": "C6",
+      "value": 375000.0,
+      "valueCell": "E6",
+      "lots": 1,
+      "lotsCell": "B6",
+      "landValue": 87886.6,
+      "landValueCell": "F6",
+      "buildingAndFurnishingsValue": 287113.4,
+      "buildingAndFurnishingsValueCell": "G6",
+      "note": "Clubhouse value 375,000 is typed in; land value = 1 lot x 75,000 + 10 ac x 1,288.66 (F6), the rest (G6) is building and furnishings."
+    },
+    {
+      "label": "The Land to Develop",
+      "labelCell": "D7",
+      "target": "Land Development:13 Chisel Creek Dr",
+      "acres": 39,
+      "acresCell": "C7",
+      "value": 350257.73,
+      "valueCell": "E7",
+      "lots": 4,
+      "lotsCell": "B7",
+      "landValue": 350257.73,
+      "landValueCell": "F7",
+      "buildingAndFurnishingsValue": 0.0,
+      "buildingAndFurnishingsValueCell": "G7",
+      "note": "Acres C7 is a formula: 107 - 10 (Clubhouse) - 58 (House) = 39, i.e. the 107-acre parcel less the Clubhouse and house acreage (the Shed's 2.2 ac sit outside that 107). Value E7 is derived: 4 lots x 75,000 + 39 ac x 1,288.66; building value is 0."
+    },
+    {
+      "label": "Our House",
+      "labelCell": "D8",
+      "target": "PERSONAL",
+      "acres": 58,
+      "acresCell": "C8",
+      "value": 149742.27,
+      "valueCell": "E8",
+      "lots": 1,
+      "lotsCell": "B8",
+      "landValue": 149742.27,
+      "landValueCell": "F8",
+      "buildingAndFurnishingsValue": 0.0,
+      "buildingAndFurnishingsValueCell": "G8",
+      "note": "Personal house. Value E8 is derived: 1 lot x 75,000 + 58 ac x 1,288.66; building value is 0. Its share of any split is Jose's personal expense (3102 Capital Distribution)."
+    }
+  ],
+  "propertiesTable": {
+    "headerCells": "B4:J4",
+    "headers": {
+      "B4": "Lots",
+      "C4": "Acres",
+      "E4": "Total Value",
+      "F4": "Land Value",
+      "G4": "Build & Per Furn",
+      "H4": "% of Land Expenses",
+      "I4": "% of Other Expenses",
+      "J4": "Expenses with no Shed"
+    },
+    "totals": {
+      "acres": 109.2,
+      "acresCell": "C9",
+      "value": 1100000.0,
+      "valueCell": "E9",
+      "landValue": 665721.65,
+      "landValueCell": "F9",
+      "buildingAndFurnishingsValue": 434278.35,
+      "buildingAndFurnishingsValueCell": "G9",
+      "note": "E9 = 1,100,000 is typed in (not a SUM) and is the anchor for the land valuation; C9, F9, G9 are column sums."
+    }
+  },
+  "landValuation": {
+    "perLot": 75000,
+    "perLotCell": "C11",
+    "perLotLabelCell": "B11",
+    "lots": 5,
+    "lotsCell": "D11",
+    "lotValue": 375000.0,
+    "lotValueCell": "E11",
+    "perAcre": 1288.659794,
+    "perAcreCell": "C12",
+    "perAcreLabelCell": "B12",
+    "acres": 97,
+    "acresCell": "D12",
+    "acreValue": 125000.0,
+    "acreValueCell": "E12",
+    "total": 500000.0,
+    "totalCell": "E13",
+    "note": "E13 = 500,000 is the whole-parcel value 1,100,000 (E9) less the Shed (225,000) and the Clubhouse (375,000), i.e. the value assigned to the Land to Develop plus Our House together. 5 buildable lots at 75,000 = 375,000 (E11); the per-acre rate C12 is solved backwards as (500,000 - 375,000) / 97 acres = 1,288.66 so that 97 acres are worth 125,000 (E12). Those two rates then produce the Land Value column F5:F8 and the Total Value of the Land (E7) and the House (E8)."
+  },
+  "percentageSets": [
+    {
+      "key": "pct_land_expenses",
+      "label": "% of Land Expenses",
+      "headerCell": "H4",
+      "basis": "ACRES",
+      "secondaryBasis": null,
+      "description": "All four Chisel Creek properties (Shed, Clubhouse, Land to Develop, Our House) weighted by acres (C5:C8, total 109.2 ac in C9).",
+      "cellRange": "H5:H9",
+      "totalCell": "H9",
+      "total": 1.0,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 2.2,
+          "weightCell": "C5",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.020147,
+          "shareCell": "H5"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 10,
+          "weightCell": "C6",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.091575,
+          "shareCell": "H6"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 39,
+          "weightCell": "C7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.357143,
+          "shareCell": "H7"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 58,
+          "weightCell": "C8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.531136,
+          "shareCell": "H8"
+        }
+      ],
+      "usedFor": [
+        "Land-type expenses on the Chisel Creek parcel (the sheet does not list specific bills)",
+        "2022 Assessment block: personal share of the Land assessed value, F25 = E25 x H8 (house acre share 53.11%)"
+      ]
+    },
+    {
+      "key": "pct_other_expenses",
+      "label": "% of Other Expenses",
+      "headerCell": "I4",
+      "basis": "VALUE",
+      "secondaryBasis": null,
+      "description": "All four Chisel Creek properties weighted by Total Value (E5:E8, total 1,100,000 in E9); the house share I8 is written as 1 - SUM(I5:I7) so the column sums to exactly 1.",
+      "cellRange": "I5:I9",
+      "totalCell": "I9",
+      "total": 1.0,
+      "targets": [
+        {
+          "label": "The Shed",
+          "target": "Rentals:The Shed",
+          "weight": 225000,
+          "weightCell": "E5",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.204545,
+          "shareCell": "I5"
+        },
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 375000,
+          "weightCell": "E6",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.340909,
+          "shareCell": "I6"
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 350257.731959,
+          "weightCell": "E7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.318416,
+          "shareCell": "I7"
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 149742.268041,
+          "weightCell": "E8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.136129,
+          "shareCell": "I8"
+        }
+      ],
+      "usedFor": [
+        "Non-land (other) shared expenses on the Chisel Creek parcel (the sheet does not list specific bills)"
+      ]
+    },
+    {
+      "key": "pct_no_shed",
+      "label": "Expenses with no Shed",
+      "headerCell": "J4",
+      "basis": "PERCENT",
+      "secondaryBasis": null,
+      "description": "Clubhouse, Land to Develop and Our House only (Shed excluded), weighted by Total Value (E6:E8, total 875,000) and ROUNDED to 2 decimals in the sheet: 0.43 / 0.40 / 0.17. Recomputing weight / sum gives 0.428571 / 0.400295 / 0.171134 (see unroundedShare); the rounded values still sum to 1.00 (J9). The percentages are typed by hand in the sheet (43 / 40 / 17 %), not computed from the values.",
+      "rounding": "ROUND(value / SUM(E6:E8), 2)",
+      "cellRange": "J6:J9",
+      "totalCell": "J9",
+      "total": 1.0,
+      "targets": [
+        {
+          "label": "The Club House",
+          "target": "Rentals:The Clubhouse",
+          "weight": 0.43,
+          "weightCell": "J6",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.43,
+          "shareCell": "J6",
+          "unroundedShare": 0.428571,
+          "valueWeightNote": "The sheet gives no weight for this column; the share is typed by hand (the property value 375000 is listed on the row)."
+        },
+        {
+          "label": "The Land to Develop",
+          "target": "Land Development:13 Chisel Creek Dr",
+          "weight": 0.4,
+          "weightCell": "J7",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.4,
+          "shareCell": "J7",
+          "unroundedShare": 0.400295,
+          "valueWeightNote": "The sheet gives no weight for this column; the share is typed by hand (the property value 350257.731959 is listed on the row)."
+        },
+        {
+          "label": "Our House",
+          "target": "PERSONAL",
+          "weight": 0.17,
+          "weightCell": "J8",
+          "weight2": null,
+          "weight2Cell": null,
+          "share": 0.17,
+          "shareCell": "J8",
+          "unroundedShare": 0.171134,
+          "valueWeightNote": "The sheet gives no weight for this column; the share is typed by hand (the property value 149742.268041 is listed on the row)."
+        }
+      ],
+      "usedFor": [
+        "Shared expenses that do not touch the Shed (the sheet does not list specific bills)"
+      ]
+    }
+  ],
+  "specificBills": [],
+  "reallocationOfGeneral": null,
+  "other": [
+    {
+      "title": "Land to Develop acreage breakdown",
+      "cellRange": "D15:E20",
+      "summary": "Where the 39 acres of Land to Develop (C7) come from: Front Lots 3.5, Behind Homes 5.5, Big Lots 20, Goins 10; E20 = SUM = 39.",
+      "data": [
+        ["Land to Develop", "Acres"],
+        ["Front Lots", 3.5],
+        ["Behind Homes", 5.5],
+        ["Big Lots", 20],
+        ["Goins", 10],
+        ["Total", 39]
+      ]
+    },
+    {
+      "title": "2022 Assessment - personal vs business split of the parcel assessment and estimated tax",
+      "cellRange": "B22:G28",
+      "summary": "A later addition on the 2020 tab (it is titled 2022 Assessment): the parcel's assessed value is split between Jose personally and the business. Land 69,130 (no change) is split using the house's acre share H8 (53.11% personal = 36,717.40, business 32,412.60). Buildings: the original 141,000 assessment is the personal house, the 758,860 increase is business (new 899,860). Totals 210,130 original / 177,717.40 personal / 791,272.60 business; at the 3.41% tax rate (C22) that is 7,165.43 original tax, 6,060.16 personal and 26,982.40 business.",
+      "taxRate": 0.0341,
+      "taxRateCell": "C22",
+      "taxRateLabelCell": "B22",
+      "headers": {
+        "cells": "B24:G24",
+        "labels": ["2022 Assessment", "Original", "Change", "New", "Personal", "Business"]
+      },
+      "data": [
+        ["Land", 69130, 0, 69130, 36717.4, 32412.6],
+        ["Buildings", 141000, 758860, 899860, 141000.0, 758860.0],
+        ["Total assessment", 210130.0, null, null, 177717.4, 791272.6],
+        ["Tax at 3.41%", 7165.433, null, null, 6060.16, 26982.4]
+      ],
+      "dataCells": ["B25:G25", "B26:G26", "C27,F27,G27", "C28,F28,G28"],
+      "formulaNotes": "F25 = E25*H8; G25 = E25-F25; C26 = E26-D26; F26 = C26; G26 = D26; C27/F27/G27 = column sums; C28 = C27*C22; F28 = F27*C22; G28 = G27*C22."
+    }
+  ],
+  "coverage": {
+    "nonEmptyCells": 97,
+    "accountedFor": 97,
+    "unaccounted": []
+  }
+}

@@ -198,6 +198,15 @@ function validateUserLines(
   });
 }
 
+export interface BuildLinesOptions {
+  /**
+   * The inputs already include the bank side (the historical import writes the workbook's lines exactly
+   * as they are, several bank lines included): nothing is derived, the set must balance overall, and only
+   * attribution and the cross-entity bridge are computed. Never used for hand entry.
+   */
+  explicitLines?: boolean;
+}
+
 /**
  * The full set of lines a transaction should have: the user's lines (attributed to their entities), the
  * derived bank lines for a bank-centric transaction, and the cross-entity bridge lines.
@@ -206,6 +215,7 @@ export function buildDesiredLines(
   ref: RefData,
   head: { kind: string; entityId: string; bankAccountId: string | null },
   inputs: readonly UserLineInput[],
+  options: BuildLinesOptions = {},
 ): LineSpec[] {
   const ctx = attributionContext(ref, head.entityId);
   const user: LineSpec[] = inputs.map((l) => ({
@@ -223,7 +233,20 @@ export function buildDesiredLines(
   }));
 
   const derived: LineSpec[] = [];
-  if (head.kind === "BANK") {
+  if (options.explicitLines) {
+    if (head.kind === "BANK" && !(head.bankAccountId && ref.bankAccounts.get(head.bankAccountId)))
+      throw new LedgerError("Pick the bank account this transaction ran through.");
+    let dr = 0n;
+    let cr = 0n;
+    for (const l of user) {
+      dr += l.debitCents;
+      cr += l.creditCents;
+    }
+    if (dr !== cr)
+      throw new LedgerError(
+        `The entry does not balance: debits ${formatCents(dr)} vs credits ${formatCents(cr)} (difference ${formatCents(dr - cr)}).`,
+      );
+  } else if (head.kind === "BANK") {
     const bank = head.bankAccountId ? ref.bankAccounts.get(head.bankAccountId) : null;
     if (!bank) throw new LedgerError("Pick the bank account this transaction ran through.");
     for (const b of deriveBankLines(user, bank.accountId)) {

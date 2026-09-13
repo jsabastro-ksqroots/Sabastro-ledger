@@ -59,3 +59,15 @@ Bank −1,610.27 · Fixed Asset 317,907.30 · Other Current Assets 0.00 · Equit
 ## Tax worksheet sheets (sizes only; parameters are imported in Phase 2)
 
 2024: 80 rows × 12 cols · 2023: 71 × 12 · 2022: 91 × 10 · 2021: 60 × 24 · 2020: 30 × 10.
+
+## Addendum 2026-09-13 (Phase 2 import)
+
+Two independent readers (the TypeScript importer on exceljs and a separate openpyxl script) re-derived
+every figure above and agree with each other and with this document to the cent, with these corrections
+to the wording and counts: the 43 negative cells are 25 negative debits and 18 negative credits (each
+side Σ −5,862.32, which is why the gross totals rise by 11,724.64 to 13,303,638.68); four 2024 entries
+carry two dates; 194 amounts in the 2023 reallocation entries have fractions of a cent (rounded per
+line, every entry still balances); 144 formula cells have no cached value (read as 0.00; all zero); the
+2025 sheet has 31 distinct "Filled in by" values and 797 distinct Row IDs (blank excluded); 92 rows are
+cross-entity (three Providence rows run through Venmo); the "7 groups / 15 rows" of same-day identical
+rows is the (bank, date, amount) key. Full detail: `docs/IMPORT_REPORT.md` and `docs/DECISIONS.md` P2-*.
